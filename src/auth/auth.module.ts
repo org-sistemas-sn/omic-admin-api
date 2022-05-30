@@ -21,7 +21,7 @@ import config from 'src/config';
         return {
           secret: configService.jwtSecret,
           signOptions: {
-            expiresIn: '15m',
+            expiresIn: '1m',
           },
         };
       },
