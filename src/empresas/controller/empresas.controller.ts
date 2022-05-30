@@ -7,6 +7,7 @@ import {
   ParseIntPipe,
   Delete,
   Get,
+  Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
@@ -14,6 +15,7 @@ import { CreateCompany, UpdateCompany } from '../dtos/empresa.dto';
 import { CreateContact, UpdateContact } from '../dtos/contacto.dto';
 import { EmpresasService } from '../services/empresas.service';
 import { ContactosService } from '../services/contactos.service';
+import { FilterCompanyDTO } from '../dtos/filter.dto';
 
 @ApiTags('Empresas')
 @Controller('empresas')
@@ -48,6 +50,11 @@ export class EmpresasController {
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.empresasService.findOneWithRelations(id, 'contactos');
+  }
+
+  @Get('')
+  findAll(@Query() params: FilterCompanyDTO) {
+    return this.empresasService.findAll(params);
   }
 
   @Post('')

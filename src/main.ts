@@ -19,6 +19,8 @@ async function bootstrap() {
 
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
+  app.enableCors();
+
   app.setGlobalPrefix('api');
 
   app.use(cookieParser());
