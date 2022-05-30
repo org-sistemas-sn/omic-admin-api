@@ -19,7 +19,10 @@ async function bootstrap() {
 
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
-  app.enableCors();
+  app.enableCors({
+    origin: [`http://localhost:3000`, `https://localhost:3000`],
+    credentials: true,
+  });
 
   app.setGlobalPrefix('api');
 
