@@ -7,8 +7,8 @@ import {
   OneToOne,
   JoinColumn,
 } from 'typeorm';
-import { Autorizado } from './autorizado.entity';
 
+import { Autorizado } from './autorizado.entity';
 import { Denuncia } from './denuncia.entity';
 
 @Entity({ name: 'denunciantes' })

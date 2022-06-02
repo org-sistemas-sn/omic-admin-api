@@ -1,4 +1,3 @@
-import { Denunciante } from './denunciante.entity';
 import {
   Column,
   CreateDateColumn,
@@ -7,6 +6,8 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+
+import { Denunciante } from './denunciante.entity';
 
 @Entity({ name: 'autorizados' })
 export class Autorizado {
