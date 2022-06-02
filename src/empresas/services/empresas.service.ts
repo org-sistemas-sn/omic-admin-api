@@ -7,8 +7,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { FindConditions, Repository, Like } from 'typeorm';
 
 import { Empresa } from '../entities/empresa.entity';
-import { CreateCompany, UpdateCompany } from '../dtos/empresa.dto';
-import { FilterCompanyDTO } from '../dtos/filter.dto';
+import { CreateCompanyDto, UpdateCompanyDto } from '../dtos/empresa.dto';
+import { FilterCompanyDto } from '../dtos/filter.dto';
 
 @Injectable()
 export class EmpresasService {
@@ -16,7 +16,7 @@ export class EmpresasService {
     @InjectRepository(Empresa) private empresaRepo: Repository<Empresa>,
   ) {}
 
-  async create(data: CreateCompany) {
+  async create(data: CreateCompanyDto) {
     const company = await this.empresaRepo.findOne({
       where: { email: data.email },
     });
@@ -25,7 +25,7 @@ export class EmpresasService {
     return this.empresaRepo.save(newCompany);
   }
 
-  async update(id: number, changes: UpdateCompany) {
+  async update(id: number, changes: UpdateCompanyDto) {
     const company = await this.empresaRepo.findOne(id);
     if (!company) {
       throw new NotFoundException();
@@ -58,7 +58,7 @@ export class EmpresasService {
     return company;
   }
 
-  findAll(params?: FilterCompanyDTO) {
+  findAll(params?: FilterCompanyDto) {
     if (params) {
       const where: FindConditions<Empresa> = {};
       const { limit, offset } = params;
@@ -66,7 +66,7 @@ export class EmpresasService {
       if (nombre) where.nombre = Like(`%${nombre}%`);
       if (cuit) where.cuit = Like(`%${cuit}%`);
       if (email) where.email = Like(email);
-      if (domicilio) where.domicilio = Like(domicilio);
+      if (domicilio) where.domicilio = Like(`%${domicilio}%`);
       if (estado) where.estado = Like(estado);
       if (!limit) {
         return this.empresaRepo.find({ relations: ['contactos'], where });

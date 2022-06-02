@@ -12,7 +12,7 @@ import { UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 
 import { UsuariosService } from '../services/usuarios.service';
-import { CreateUser, UpdateUser } from '../dtos/usuario.dto';
+import { CreateUserDto, UpdateUserDto } from '../dtos/usuario.dto';
 
 @UseGuards(AuthGuard('jwt'))
 @ApiTags('Usuarios')
@@ -21,7 +21,7 @@ export class UsuariosController {
   constructor(private usuariosService: UsuariosService) {}
 
   @Post()
-  create(@Body() payload: CreateUser) {
+  create(@Body() payload: CreateUserDto) {
     return this.usuariosService.create(payload);
   }
 
@@ -31,7 +31,10 @@ export class UsuariosController {
   }
 
   @Put(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() payload: UpdateUser) {
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() payload: UpdateUserDto,
+  ) {
     return this.usuariosService.update(id, payload);
   }
 

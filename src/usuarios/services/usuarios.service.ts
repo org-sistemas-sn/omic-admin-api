@@ -8,7 +8,7 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 
 import { Usuario } from '../entities/usuario.entity';
-import { CreateUser, UpdateUser } from '../dtos/usuario.dto';
+import { CreateUserDto, UpdateUserDto } from '../dtos/usuario.dto';
 
 @Injectable()
 export class UsuariosService {
@@ -16,7 +16,7 @@ export class UsuariosService {
     @InjectRepository(Usuario) private usuarioRepo: Repository<Usuario>,
   ) {}
 
-  async create(data: CreateUser) {
+  async create(data: CreateUserDto) {
     const user = await this.findByEmail(data.email);
     if (user) {
       throw new BadRequestException();
@@ -27,7 +27,7 @@ export class UsuariosService {
     return this.usuarioRepo.save(newUser);
   }
 
-  async update(id: number, changes: UpdateUser) {
+  async update(id: number, changes: UpdateUserDto) {
     const user = await this.usuarioRepo.findOne(id);
     if (!user) {
       throw new NotFoundException();

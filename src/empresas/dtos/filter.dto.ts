@@ -8,7 +8,7 @@ import {
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
-export class FilterCompanyDTO {
+export class FilterCompanyDto {
   @ApiPropertyOptional()
   @IsString()
   @IsOptional()

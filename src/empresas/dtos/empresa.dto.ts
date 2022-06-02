@@ -1,7 +1,7 @@
 import { IsString, IsNotEmpty, IsEmail, IsOptional } from 'class-validator';
 import { PartialType, ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-export class CreateCompany {
+export class CreateCompanyDto {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
@@ -28,4 +28,4 @@ export class CreateCompany {
   readonly estado: string;
 }
 
-export class UpdateCompany extends PartialType(CreateCompany) {}
+export class UpdateCompanyDto extends PartialType(CreateCompanyDto) {}

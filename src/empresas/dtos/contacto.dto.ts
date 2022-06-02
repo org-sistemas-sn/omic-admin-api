@@ -8,7 +8,7 @@ import {
 } from 'class-validator';
 import { PartialType, ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-export class CreateContact {
+export class CreateContactDto {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
@@ -46,4 +46,4 @@ export class CreateContact {
   readonly empresaId: number;
 }
 
-export class UpdateContact extends PartialType(CreateContact) {}
+export class UpdateContactDto extends PartialType(CreateContactDto) {}

@@ -7,7 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { Contacto } from '../entities/contacto.entity';
-import { CreateContact, UpdateContact } from '../dtos/contacto.dto';
+import { CreateContactDto, UpdateContactDto } from '../dtos/contacto.dto';
 import { EmpresasService } from '../services/empresas.service';
 
 @Injectable()
@@ -17,7 +17,7 @@ export class ContactosService {
     private empresasService: EmpresasService,
   ) {}
 
-  async create(data: CreateContact) {
+  async create(data: CreateContactDto) {
     const newContact = this.contactosRepo.create(data);
     if (!data.empresaId) {
       throw new BadRequestException();
@@ -27,7 +27,7 @@ export class ContactosService {
     return this.contactosRepo.save(newContact);
   }
 
-  async update(id: number, changes: UpdateContact) {
+  async update(id: number, changes: UpdateContactDto) {
     const contact = await this.contactosRepo.findOne(id, {
       relations: ['empresa'],
     });

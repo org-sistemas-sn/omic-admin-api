@@ -10,8 +10,8 @@ import {
 import { Contacto } from './contacto.entity';
 
 export enum empresaEstado {
-  ADHERIDO = 'Adherido',
-  NO_ADHERIDO = 'No_Adherido',
+  ADHERIDO = 'ADHERIDO',
+  NO_ADHERIDO = 'NO_ADHERIDO',
 }
 
 @Entity({ name: 'empresas' })

@@ -11,11 +11,11 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
-import { CreateCompany, UpdateCompany } from '../dtos/empresa.dto';
-import { CreateContact, UpdateContact } from '../dtos/contacto.dto';
+import { CreateCompanyDto, UpdateCompanyDto } from '../dtos/empresa.dto';
+import { CreateContactDto, UpdateContactDto } from '../dtos/contacto.dto';
 import { EmpresasService } from '../services/empresas.service';
 import { ContactosService } from '../services/contactos.service';
-import { FilterCompanyDTO } from '../dtos/filter.dto';
+import { FilterCompanyDto } from '../dtos/filter.dto';
 
 @ApiTags('Empresas')
 @Controller('empresas')
@@ -28,14 +28,14 @@ export class EmpresasController {
   // Rutas Contactos
 
   @Post('contactos')
-  createContact(@Body() payload: CreateContact) {
+  createContact(@Body() payload: CreateContactDto) {
     return this.contactosService.create(payload);
   }
 
   @Put('contactos/:id')
   updateContact(
     @Param('id', ParseIntPipe) id: number,
-    @Body() payload: UpdateContact,
+    @Body() payload: UpdateContactDto,
   ) {
     return this.contactosService.update(id, payload);
   }
@@ -53,19 +53,19 @@ export class EmpresasController {
   }
 
   @Get('')
-  findAll(@Query() params: FilterCompanyDTO) {
+  findAll(@Query() params: FilterCompanyDto) {
     return this.empresasService.findAll(params);
   }
 
   @Post('')
-  create(@Body() payload: CreateCompany) {
+  create(@Body() payload: CreateCompanyDto) {
     return this.empresasService.create(payload);
   }
 
   @Put(':id')
   update(
     @Param('id', ParseIntPipe) id: number,
-    @Body() payload: UpdateCompany,
+    @Body() payload: UpdateCompanyDto,
   ) {
     return this.empresasService.update(id, payload);
   }
