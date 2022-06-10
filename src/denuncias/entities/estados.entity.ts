@@ -17,7 +17,7 @@ export class Estado {
   nombre: string;
 
   @OneToMany(() => Denuncia, (denuncia) => denuncia.estado)
-  denuncia: Denuncia;
+  denuncias: Denuncia[];
 
   @CreateDateColumn({
     name: 'create_at',

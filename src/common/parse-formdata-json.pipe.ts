@@ -5,7 +5,6 @@ export class ParseFormDataJsonPipe implements PipeTransform {
   transform(value: object, metadata: ArgumentMetadata) {
     const valueToParse = value[this._prop];
     const parsed = JSON.parse(valueToParse);
-    // console.log(parsed, 'PARSED');
 
     return parsed;
   }

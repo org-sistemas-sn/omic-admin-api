@@ -14,7 +14,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { UsuariosService } from '../services/usuarios.service';
 import { CreateUserDto, UpdateUserDto } from '../dtos/usuario.dto';
 
-@UseGuards(AuthGuard('jwt'))
+// @UseGuards(AuthGuard('jwt'))
 @ApiTags('Usuarios')
 @Controller('usuarios')
 export class UsuariosController {

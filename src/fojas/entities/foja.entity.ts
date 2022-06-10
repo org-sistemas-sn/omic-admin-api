@@ -6,6 +6,7 @@ import {
   UpdateDateColumn,
   OneToOne,
   OneToMany,
+  JoinColumn,
 } from 'typeorm';
 
 import { Denuncia } from 'src/denuncias/entities/denuncia.entity';
@@ -20,6 +21,7 @@ export class Foja {
   ruta: string;
 
   @OneToOne(() => Denuncia, (denuncia) => denuncia.estado)
+  @JoinColumn({ name: 'denuncia_id' })
   denuncia: Denuncia;
 
   @OneToMany(() => Archivo, (archivo) => archivo.foja)

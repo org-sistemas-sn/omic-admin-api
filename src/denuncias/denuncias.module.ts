@@ -8,6 +8,11 @@ import { Estado } from './entities/estados.entity';
 import { DenunciasService } from './services/denuncias.service';
 import { DenunciasController } from './controllers/denuncias.controller';
 import { Autorizado } from './entities/autorizado.entity';
+import { DenunciantesService } from './services/denunciantes.service';
+import { DenunciadosService } from './services/denunciados.service';
+import { AutorizadosService } from './services/autorizados.service';
+import { EstadosService } from './services/estados.service';
+import { FojasModule } from 'src/fojas/fojas.module';
 
 @Module({
   imports: [
@@ -18,8 +23,15 @@ import { Autorizado } from './entities/autorizado.entity';
       Estado,
       Autorizado,
     ]),
+    FojasModule,
   ],
-  providers: [DenunciasService],
+  providers: [
+    DenunciasService,
+    DenunciantesService,
+    DenunciadosService,
+    AutorizadosService,
+    EstadosService,
+  ],
   controllers: [DenunciasController],
 })
 export class DenunciasModule {}

@@ -63,7 +63,6 @@ export class Denuncia {
   denunciados: Denunciado[];
 
   @OneToOne(() => Foja, (foja) => foja.denuncia)
-  @JoinColumn({ name: 'foja_id' })
   foja: Foja;
 
   @CreateDateColumn({

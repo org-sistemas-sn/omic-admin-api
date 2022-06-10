@@ -8,10 +8,11 @@ import {
   IsArray,
   ArrayMinSize,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 import { CreateInformerDto } from './denunciante.dto';
-import { Type } from 'class-transformer';
 import { CreateDenouncedDto } from './denunciado.dto';
+import { CreateLicencedDto } from './autorizado.dto';
 
 export class CreateComplaintDto {
   @IsString()
@@ -41,6 +42,12 @@ export class CreateComplaintDto {
   @IsString()
   @IsOptional()
   readonly estadoGeneral: string;
+
+  @IsObject()
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CreateLicencedDto)
+  readonly autorizado: CreateLicencedDto;
 
   @IsObject()
   @IsNotEmptyObject()

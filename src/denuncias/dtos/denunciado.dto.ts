@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsEmail } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
 import { PartialType } from '@nestjs/swagger';
 
 export class CreateDenouncedDto {
@@ -11,7 +11,6 @@ export class CreateDenouncedDto {
   readonly dniCuilCuit: string;
 
   @IsString()
-  @IsEmail()
   @IsOptional()
   readonly email: string;
 
