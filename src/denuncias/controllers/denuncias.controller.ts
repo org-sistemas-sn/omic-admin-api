@@ -5,15 +5,21 @@ import {
   UploadedFiles,
   ValidationPipe,
   Body,
+  Get,
+  Query,
+  UsePipes,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { ApiTags } from '@nestjs/swagger';
 
 import { ParseFormDataJsonPipe } from 'src/common/parse-formdata-json.pipe';
 import { CreateComplaintDto } from '../dtos/denuncia.dto';
 import { DenunciasService } from '../services/denuncias.service';
 import { FojasService } from '../../fojas/services/fojas.service';
 import { ArchivosService } from '../../fojas/services/archivos.service';
+import { FilterComplaintDto } from '../dtos/filter.dto';
 
+@ApiTags('Denuncias')
 @Controller('denuncias')
 export class DenunciasController {
   constructor(
@@ -74,5 +80,18 @@ export class DenunciasController {
     }
 
     return 'CREATED';
+  }
+
+  @Get('')
+  @UsePipes(
+    new ValidationPipe({
+      transform: true,
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
+    }),
+  )
+  findAll(@Query() params: FilterComplaintDto) {
+    return this.denunciaService.findAll(params);
   }
 }

@@ -1,6 +1,6 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { FindConditions, Like, Repository } from 'typeorm';
 
 import { Denuncia } from '../entities/denuncia.entity';
 import { CreateComplaintDto } from '../dtos/denuncia.dto';
@@ -8,6 +8,7 @@ import { AutorizadosService } from './autorizados.service';
 import { DenunciantesService } from './denunciantes.service';
 import { DenunciadosService } from './denunciados.service';
 import { EstadosService } from './estados.service';
+import { FilterComplaintDto } from '../dtos/filter.dto';
 
 @Injectable()
 export class DenunciasService {
@@ -39,6 +40,46 @@ export class DenunciasService {
       return complaintSaved;
     } catch (error) {
       throw new InternalServerErrorException();
+    }
+  }
+
+  async findAll(params?: FilterComplaintDto) {
+    try {
+      const relations = [
+        'estado',
+        'denunciante',
+        'denunciados',
+        'denunciados.empresa',
+        'denunciante.autorizado',
+        'foja',
+        'foja.archivos',
+      ];
+      if (params) {
+        const where: FindConditions<Denuncia> = {};
+        const { limit, offset } = params;
+        const { denunciante, fechaInicio, dni, estadoGeneral, estado } = params;
+
+        if (denunciante)
+          where.denunciante = { nombre: Like(`%${denunciante}%`) };
+        if (fechaInicio) where.createAt = Like(`%${fechaInicio}%`);
+        if (dni) where.denunciante = { dniCuil: Like(`%${dni}%`) };
+        if (estadoGeneral) where.estadoGeneral = estadoGeneral;
+        if (estado) where.estado = { nombre: estado };
+
+        if (!limit) {
+          return this.denunciaRepo.find({ relations, where });
+        }
+
+        return this.denunciaRepo.find({
+          relations,
+          where,
+          take: limit,
+          skip: offset,
+        });
+      }
+      return this.denunciaRepo.find({ relations });
+    } catch (error) {
+      throw new InternalServerErrorException(error.message);
     }
   }
 }
