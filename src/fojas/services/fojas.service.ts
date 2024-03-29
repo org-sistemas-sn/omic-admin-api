@@ -15,7 +15,7 @@ export class FojasService {
     const dir = this._dir + complaint.id;
     const foja = new Foja();
     foja.ruta = dir;
-    foja.denuncia = complaint;
+    // foja.denuncia = complaint;
     return this.fojaRepo.save(foja);
   }
 

@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindConditions, Like, Repository } from 'typeorm';
 
@@ -31,9 +35,9 @@ export class DenunciasService {
         denunciante,
         licenced,
       );
-      const state = await this.estadosService.findOne(1);
+      // const state = await this.estadosService.findOne(1);
       const newComplaint = this.denunciaRepo.create(complaint);
-      newComplaint.estado = state;
+      // newComplaint.estado = state;
       newComplaint.denunciante = informer;
       const complaintSaved = await this.denunciaRepo.save(newComplaint);
       await this.denunciadosService.createByArray(denunciados, complaintSaved);
@@ -46,25 +50,34 @@ export class DenunciasService {
   async findAll(params?: FilterComplaintDto) {
     try {
       const relations = [
-        'estado',
+        // 'estado',
+        'autorizado',
         'denunciante',
-        'denunciados',
-        'denunciados.empresa',
-        'denunciante.autorizado',
-        'foja',
-        'foja.archivos',
+        // 'denunciadoDenuncia',
+        // 'denunciadoDenuncia.denunciado',
+        // 'denunciados.empresa',
+        // 'foja',
+        // 'foja.archivos',
       ];
       if (params) {
         const where: FindConditions<Denuncia> = {};
         const { limit, offset } = params;
-        const { denunciante, fechaInicio, dni, estadoGeneral, estado } = params;
+        const { nombre, apellido, dni, email } = params;
 
-        if (denunciante)
-          where.denunciante = { nombre: Like(`%${denunciante}%`) };
-        if (fechaInicio) where.createAt = Like(`%${fechaInicio}%`);
-        if (dni) where.denunciante = { dniCuil: Like(`%${dni}%`) };
-        if (estadoGeneral) where.estadoGeneral = estadoGeneral;
-        if (estado) where.estado = { nombre: estado };
+        if (nombre && !apellido)
+          where.denunciante = { nombre: Like(`%${nombre}%`) };
+        if (apellido && !nombre)
+          where.denunciante = { apellido: Like(`%${apellido}%`) };
+        if (nombre && apellido)
+          where.denunciante = {
+            nombre: Like(`%${nombre}%`),
+            apellido: Like(`%${apellido}%`),
+          };
+        // if (fechaInicio) where.createdAt = Like(`%${fechaInicio}%`);
+        if (dni) where.denunciante = { dni: Like(`%${dni}%`) };
+        if (email) where.denunciante = { email: Like(`%${email}%`) };
+        // if (estadoGeneral) where.estadoGeneral = estadoGeneral;
+        // if (estado) where.estado = { nombre: estado };
 
         if (!limit) {
           return this.denunciaRepo.find({ relations, where });
@@ -81,5 +94,23 @@ export class DenunciasService {
     } catch (error) {
       throw new InternalServerErrorException(error.message);
     }
+  }
+
+  async findOne(id: number) {
+    const relations = [
+      // 'estado',
+      'autorizado',
+      'denunciante',
+      'denunciadoDenuncia',
+      'denunciadoDenuncia.denunciado',
+      // 'denunciados.empresa',
+      // 'foja',
+      // 'foja.archivos',
+    ];
+    const complaint = await this.denunciaRepo.findOne(id, { relations });
+    if (!complaint) {
+      throw new NotFoundException();
+    }
+    return complaint;
   }
 }

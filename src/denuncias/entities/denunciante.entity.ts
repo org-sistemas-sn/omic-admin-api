@@ -11,64 +11,60 @@ import {
 import { Autorizado } from './autorizado.entity';
 import { Denuncia } from './denuncia.entity';
 
-@Entity({ name: 'denunciantes' })
+@Entity({ name: 'denunciante' })
 export class Denunciante {
-  @PrimaryGeneratedColumn()
+  @PrimaryGeneratedColumn({ name: 'Id_Denunciante' })
   id: number;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 255, name: 'Nombre' })
   nombre: string;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 255, name: 'Apellido' })
   apellido: string;
 
-  @Column({ type: 'varchar', length: 255, name: 'dni_cuil' })
-  dniCuil: string;
+  @Column({ type: 'bigint', name: 'DNI' })
+  dni: string;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 255, name: 'Email' })
   email: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ type: 'varchar', length: 90, name: 'Telefono', nullable: true })
   telefono: string;
 
   @Column({
     type: 'varchar',
-    length: 255,
+    length: 90,
     nullable: true,
-    name: 'telefono_alter',
+    name: 'Telefono_Alter',
   })
   telefonoAlter: string;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 90, name: 'Celular' })
   celular: string;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 255, name: 'Domicilio' })
   domicilio: string;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 90, name: 'Localidad' })
   localidad: string;
 
-  @Column({ type: 'varchar', length: 255, name: 'cod_postal' })
+  @Column({ type: 'varchar', length: 45, name: 'Codigo_Postal' })
   codPostal: string;
-
-  @OneToOne(() => Autorizado, (autorizado) => autorizado.denunciante)
-  @JoinColumn({ name: 'autorizado_id' })
-  autorizado: Autorizado;
 
   @OneToOne(() => Denuncia, (denuncia) => denuncia.denunciante)
   denuncia: Denuncia;
 
   @CreateDateColumn({
-    name: 'create_at',
+    name: 'created_at',
     type: 'timestamp',
     default: () => 'CURRENT_TIMESTAMP(6)',
   })
-  createAt: Date;
+  createdAt: Date;
 
   @UpdateDateColumn({
-    name: 'update_at',
+    name: 'updated_at',
     type: 'timestamp',
     default: () => 'CURRENT_TIMESTAMP(6)',
   })
-  updateAt: Date;
+  updatedAt: Date;
 }

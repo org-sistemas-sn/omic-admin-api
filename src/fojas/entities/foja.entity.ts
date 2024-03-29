@@ -20,9 +20,9 @@ export class Foja {
   @Column({ type: 'varchar', length: 255 })
   ruta: string;
 
-  @OneToOne(() => Denuncia, (denuncia) => denuncia.estado)
-  @JoinColumn({ name: 'denuncia_id' })
-  denuncia: Denuncia;
+  // @OneToOne(() => Denuncia, (denuncia) => denuncia.estado)
+  // @JoinColumn({ name: 'denuncia_id' })
+  // denuncia: Denuncia;
 
   @OneToMany(() => Archivo, (archivo) => archivo.foja)
   archivos: Archivo[];

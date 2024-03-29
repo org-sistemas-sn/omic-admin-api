@@ -13,6 +13,7 @@ import { DenunciadosService } from './services/denunciados.service';
 import { AutorizadosService } from './services/autorizados.service';
 import { EstadosService } from './services/estados.service';
 import { FojasModule } from 'src/fojas/fojas.module';
+import { DenunciadoDenuncia } from './entities/denuncia-denunciado.entity';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { FojasModule } from 'src/fojas/fojas.module';
       Denuncia,
       Denunciado,
       Denunciante,
+      DenunciadoDenuncia,
       Estado,
       Autorizado,
     ]),

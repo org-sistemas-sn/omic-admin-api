@@ -8,6 +8,7 @@ import {
   Get,
   Query,
   UsePipes,
+  Param,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { ApiTags } from '@nestjs/swagger';
@@ -93,5 +94,10 @@ export class DenunciasController {
   )
   findAll(@Query() params: FilterComplaintDto) {
     return this.denunciaService.findAll(params);
+  }
+
+  @Get(':id')
+  findOne(@Param() param: any) {
+    return this.denunciaService.findOne(param.id);
   }
 }

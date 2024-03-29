@@ -16,8 +16,8 @@ export class Estado {
   @Column({ type: 'varchar', length: 255 })
   nombre: string;
 
-  @OneToMany(() => Denuncia, (denuncia) => denuncia.estado)
-  denuncias: Denuncia[];
+  // @OneToMany(() => Denuncia, (denuncia) => denuncia.estado)
+  // denuncias: Denuncia[];
 
   @CreateDateColumn({
     name: 'create_at',

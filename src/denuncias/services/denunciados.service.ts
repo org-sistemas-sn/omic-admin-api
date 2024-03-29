@@ -16,7 +16,7 @@ export class DenunciadosService {
   async createByArray(data: CreateDenouncedDto[], complaint: Denuncia) {
     for (const denounced of data) {
       const newDenounced = this.denunciadoRepo.create(denounced);
-      newDenounced.denuncia = complaint;
+      // newDenounced.denuncia = complaint;
       await this.denunciadoRepo.save(newDenounced);
     }
   }

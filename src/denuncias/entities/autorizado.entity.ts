@@ -2,53 +2,55 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
   OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 
-import { Denunciante } from './denunciante.entity';
+// import { Denunciante } from './denunciante.entity';
+import { Denuncia } from './denuncia.entity';
 
-@Entity({ name: 'autorizados' })
+@Entity({ name: 'autorizado' })
 export class Autorizado {
-  @PrimaryGeneratedColumn()
+  @PrimaryGeneratedColumn({ name: 'Id_Autorizado' })
   id: number;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 255, name: 'Nombre' })
   nombre: string;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 255, name: 'Apellido' })
   apellido: string;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 45, name: 'DNI' })
   dni: string;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 255, name: 'Email' })
   email: string;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 90, name: 'Telefono' })
   telefono: string;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 255, name: 'Domicilio' })
   domicilio: string;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 90, name: 'Localidad' })
   localidad: string;
 
-  @OneToOne(() => Denunciante, (denunciante) => denunciante.autorizado)
-  denunciante: Denunciante;
+  @OneToOne(() => Denuncia, (denuncia) => denuncia.autorizado)
+  denuncia: Denuncia;
 
   @CreateDateColumn({
-    name: 'create_at',
+    name: 'created_at',
     type: 'timestamp',
     default: () => 'CURRENT_TIMESTAMP(6)',
   })
-  createAt: Date;
+  createdAt: Date;
 
   @UpdateDateColumn({
-    name: 'update_at',
+    name: 'updated_at',
     type: 'timestamp',
     default: () => 'CURRENT_TIMESTAMP(6)',
   })
-  updateAt: Date;
+  updatedAt: Date;
 }

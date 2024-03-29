@@ -6,69 +6,78 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  OneToMany,
 } from 'typeorm';
 
-import { Empresa } from 'src/empresas/entities/empresa.entity';
-import { Denuncia } from './denuncia.entity';
+import { DenunciadoDenuncia } from './denuncia-denunciado.entity';
+// import { Empresa } from 'src/empresas/entities/empresa.entity';
+// import { Denuncia } from './denuncia.entity';
 
-@Entity({ name: 'denunciados' })
+@Entity({ name: 'denunciado' })
 export class Denunciado {
-  @PrimaryGeneratedColumn()
+  @PrimaryGeneratedColumn({ name: 'Id_Denunciado' })
   id: number;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ type: 'text', name: 'Nombre' })
   nombre: string;
 
   @Column({
     type: 'varchar',
-    length: 255,
-    name: 'dni_cuil_cuit',
+    length: 45,
+    name: 'DNI',
     nullable: true,
   })
   dniCuilCuit: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ type: 'varchar', length: 255, name: 'Email', nullable: true })
   email: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ type: 'varchar', length: 90, name: 'Telefono', nullable: true })
   telefono: string;
 
   @Column({
     type: 'varchar',
-    length: 255,
+    length: 90,
     nullable: true,
-    name: 'telefono_alter',
+    name: 'Telefono_Alter',
   })
   telefonoAlter: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ type: 'varchar', length: 90, name: 'Domicilio', nullable: true })
   domicilio: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ type: 'varchar', length: 90, name: 'Localidad', nullable: true })
   localidad: string;
 
-  @Column({ type: 'varchar', length: 255, name: 'cod_postal', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 45,
+    name: 'Codigo_Postal',
+    nullable: true,
+  })
   codPostal: string;
 
-  @ManyToOne(() => Denuncia, (denuncia) => denuncia.denunciados)
-  @JoinColumn({ name: 'denuncia_id' })
-  denuncia: Denuncia;
+  @OneToMany(
+    () => DenunciadoDenuncia,
+    (denunciadoDenuncia) => denunciadoDenuncia.denunciado,
+  )
+  denunciadoDenuncia: DenunciadoDenuncia[];
 
-  @ManyToOne(() => Empresa)
-  @JoinColumn({ name: 'empresa_id' })
-  empresa: Empresa;
+  // @ManyToOne(() => Empresa)
+  // @JoinColumn({ name: 'empresa_id' })
+  // empresa: Empresa;
 
   @CreateDateColumn({
-    name: 'create_at',
+    name: 'created_at',
     type: 'timestamp',
     default: () => 'CURRENT_TIMESTAMP(6)',
   })
-  createAt: Date;
+  createdAt: Date;
 
   @UpdateDateColumn({
-    name: 'update_at',
+    name: 'updated_at',
     type: 'timestamp',
     default: () => 'CURRENT_TIMESTAMP(6)',
   })
-  updateAt: Date;
+  updatedAt: Date;
 }

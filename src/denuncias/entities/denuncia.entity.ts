@@ -14,68 +14,83 @@ import {
 import { Denunciado } from './denunciado.entity';
 import { Denunciante } from './denunciante.entity';
 import { Estado } from './estados.entity';
+import { DenunciadoDenuncia } from './denuncia-denunciado.entity';
+import { Autorizado } from './autorizado.entity';
 
 export enum estadoGeneral {
   abierto = 'ABIERTO',
   cerrado = 'CERRADO',
 }
 
-@Entity({ name: 'denuncias' })
+@Entity({ name: 'denuncia' })
 export class Denuncia {
-  @PrimaryGeneratedColumn()
+  @PrimaryGeneratedColumn({ name: 'Id_Denuncia' })
   id: number;
 
-  @Column({ type: 'text', name: 'descripcion_hechos' })
+  @Column({ type: 'text', name: 'Descripcion_Hechos' })
   descripcionHechos: string;
 
-  @Column({ type: 'text' })
+  @Column({ type: 'text', name: 'Pretension' })
   pretension: string;
 
-  @Column({ type: 'varchar', length: 255, name: 'manera_contrato' })
+  @Column({ type: 'varchar', length: 90, name: 'Manera_Contrato' })
   maneraContrato: string;
 
-  @Column({ type: 'varchar', length: 255, name: 'servicio_denunciado' })
+  @Column({ type: 'varchar', length: 90, name: 'Metodo_Pago' })
+  metodoPago: string;
+
+  @Column({ type: 'varchar', length: 90, name: 'Servicio_Denunciado' })
   servicio: string;
 
-  @Column({ type: 'varchar', length: 255, name: 'realizo_reclamo' })
+  @Column({ type: 'varchar', length: 45, name: 'Realizo_Reclamo' })
   realizoReclamo: string;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'text', name: 'Observaciones', nullable: true })
   observaciones: string;
 
-  @Column({
-    type: 'enum',
-    enum: estadoGeneral,
-    default: estadoGeneral.abierto,
-    name: 'estado_general',
-  })
-  estadoGeneral: string;
+  @Column({ type: 'date', name: 'Fecha' })
+  fecha: Date;
 
-  @ManyToOne(() => Estado)
-  @JoinColumn({ name: 'estado_id' })
-  estado: Estado;
+  // @Column({
+  //   type: 'enum',
+  //   enum: estadoGeneral,
+  //   default: estadoGeneral.abierto,
+  //   name: 'estado_general',
+  // })
+  // estadoGeneral: string;
+
+  // @ManyToOne(() => Estado)
+  // @JoinColumn({ name: 'estado_id' })
+  // estado: Estado;
 
   @OneToOne(() => Denunciante)
-  @JoinColumn({ name: 'denunciante_id' })
+  @JoinColumn({ name: 'Id_Denunciante' })
   denunciante: Denunciante;
 
-  @OneToMany(() => Denunciado, (denunciado) => denunciado.denuncia)
-  denunciados: Denunciado[];
+  @OneToOne(() => Autorizado, (autorizado) => autorizado.denuncia)
+  @JoinColumn({ name: 'Id_Autorizado' })
+  autorizado: Autorizado;
 
-  @OneToOne(() => Foja, (foja) => foja.denuncia)
-  foja: Foja;
+  @OneToMany(
+    () => DenunciadoDenuncia,
+    (denunciadoDenuncia) => denunciadoDenuncia.denuncia,
+  )
+  denunciadoDenuncia: DenunciadoDenuncia[];
+
+  // @OneToOne(() => Foja, (foja) => foja.denuncia)
+  // foja: Foja;
 
   @CreateDateColumn({
-    name: 'create_at',
+    name: 'created_at',
     type: 'timestamp',
     default: () => 'CURRENT_TIMESTAMP(6)',
   })
-  createAt: Date;
+  createdAt: Date;
 
   @UpdateDateColumn({
-    name: 'update_at',
+    name: 'updated_at',
     type: 'timestamp',
     default: () => 'CURRENT_TIMESTAMP(6)',
   })
-  updateAt: Date;
+  updatedAt: Date;
 }

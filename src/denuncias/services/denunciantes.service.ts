@@ -16,7 +16,7 @@ export class DenunciantesService {
   create(data: CreateInformerDto, licended?: Autorizado) {
     const informer = this.denuncianteRepo.create(data);
     if (licended) {
-      informer.autorizado = licended;
+      // informer.autorizado = licended;
     }
     return this.denuncianteRepo.save(informer);
   }
