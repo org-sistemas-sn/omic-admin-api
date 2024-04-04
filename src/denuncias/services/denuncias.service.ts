@@ -53,6 +53,7 @@ export class DenunciasService {
         // 'estado',
         'autorizado',
         'denunciante',
+        'archivos',
         // 'denunciadoDenuncia',
         // 'denunciadoDenuncia.denunciado',
         // 'denunciados.empresa',

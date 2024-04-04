@@ -14,6 +14,7 @@ import { AutorizadosService } from './services/autorizados.service';
 import { EstadosService } from './services/estados.service';
 import { FojasModule } from 'src/fojas/fojas.module';
 import { DenunciadoDenuncia } from './entities/denuncia-denunciado.entity';
+import { Archivo } from './entities/archivo.entity';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { DenunciadoDenuncia } from './entities/denuncia-denunciado.entity';
       DenunciadoDenuncia,
       Estado,
       Autorizado,
+      Archivo,
     ]),
     FojasModule,
   ],
