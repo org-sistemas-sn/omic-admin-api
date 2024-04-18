@@ -20,7 +20,12 @@ async function bootstrap() {
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
   app.enableCors({
-    origin: [`https://omic-sn-admin.netlify.app`, `http://localhost:3000`],
+    origin: [
+      `https://omic-sn-admin.netlify.app`,
+      `http://localhost:3000`,
+      `https://stage--omic-sn-admin.netlify.app/`,
+      `https://omic-sn.netlify.app/`,
+    ],
     credentials: true,
   });
 
