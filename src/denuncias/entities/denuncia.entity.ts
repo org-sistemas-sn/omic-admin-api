@@ -83,18 +83,4 @@ export class Denuncia {
 
   // @OneToOne(() => Foja, (foja) => foja.denuncia)
   // foja: Foja;
-
-  @CreateDateColumn({
-    name: 'created_at',
-    type: 'timestamp',
-    default: () => 'CURRENT_TIMESTAMP(6)',
-  })
-  createdAt: Date;
-
-  @UpdateDateColumn({
-    name: 'updated_at',
-    type: 'timestamp',
-    default: () => 'CURRENT_TIMESTAMP(6)',
-  })
-  updatedAt: Date;
 }

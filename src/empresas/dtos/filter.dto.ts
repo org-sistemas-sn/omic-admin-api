@@ -27,11 +27,6 @@ export class FilterCompanyDto {
   @ApiPropertyOptional()
   @IsString()
   @IsOptional()
-  readonly domicilio: string;
-
-  @ApiPropertyOptional()
-  @IsString()
-  @IsOptional()
   readonly estado: string;
 
   @ApiPropertyOptional()

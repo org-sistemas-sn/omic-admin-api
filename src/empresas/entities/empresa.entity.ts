@@ -4,10 +4,7 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
-  OneToMany,
 } from 'typeorm';
-
-import { Contacto } from './contacto.entity';
 
 export enum empresaEstado {
   ADHERIDO = 'ADHERIDO',
@@ -22,14 +19,22 @@ export class Empresa {
   @Column({ type: 'varchar', length: 255 })
   nombre: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ type: 'varchar', length: 255 })
   cuit: string;
 
-  @Column({ type: 'varchar', length: 255, unique: true, nullable: true })
+  @Column({ type: 'varchar', length: 255 })
   email: string;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
-  domicilio: string;
+  telefono: string;
+
+  @Column({
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+    name: 'nombre_contacto',
+  })
+  nombreContacto: string;
 
   @Column({
     type: 'enum',
@@ -38,20 +43,29 @@ export class Empresa {
   })
   estado: string;
 
-  @OneToMany(() => Contacto, (contacto) => contacto.empresa)
-  contactos: Contacto[];
+  @Column({ type: 'text', nullable: true })
+  seguimiento: string;
 
-  @CreateDateColumn({
-    name: 'create_at',
-    type: 'timestamp',
-    default: () => 'CURRENT_TIMESTAMP(6)',
+  @Column({
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+    name: 'fecha_adhesion',
   })
-  createAt: Date;
+  fechaAdhesion: string;
 
-  @UpdateDateColumn({
-    name: 'update_at',
-    type: 'timestamp',
-    default: () => 'CURRENT_TIMESTAMP(6)',
-  })
-  updateAt: Date;
+  @Column({ type: 'text', nullable: true, name: 'declaracion_jurada' })
+  declaracionJurada: string;
+
+  @Column({ type: 'text', nullable: true, name: 'pv_registro' })
+  pvRegistro: string;
+
+  @Column({ type: 'bool', name: 'is_active', default: true })
+  isActive: boolean;
+
+  @Column({ type: 'timestamp', name: 'carga_masiva' })
+  cargaMasiva: Date;
+
+  @Column({ type: 'timestamp', name: 'deleted_at' })
+  deletedAt: Date;
 }

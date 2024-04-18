@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import {
   Controller,
   Post,
@@ -8,48 +9,33 @@ import {
   Delete,
   Get,
   Query,
+  UseInterceptors,
+  UploadedFile,
+  ParseFilePipeBuilder,
+  HttpStatus,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
 import { CreateCompanyDto, UpdateCompanyDto } from '../dtos/empresa.dto';
-import { CreateContactDto, UpdateContactDto } from '../dtos/contacto.dto';
 import { EmpresasService } from '../services/empresas.service';
-import { ContactosService } from '../services/contactos.service';
 import { FilterCompanyDto } from '../dtos/filter.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @ApiTags('Empresas')
 @Controller('empresas')
 export class EmpresasController {
-  constructor(
-    private empresasService: EmpresasService,
-    private contactosService: ContactosService,
-  ) {}
-
-  // Rutas Contactos
-
-  @Post('contactos')
-  createContact(@Body() payload: CreateContactDto) {
-    return this.contactosService.create(payload);
-  }
-
-  @Put('contactos/:id')
-  updateContact(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() payload: UpdateContactDto,
-  ) {
-    return this.contactosService.update(id, payload);
-  }
-
-  @Delete('contactos/:id')
-  deleteContact(@Param('id', ParseIntPipe) id: number) {
-    return this.contactosService.remove(id);
-  }
+  constructor(private empresasService: EmpresasService) {}
 
   // Rutas Empresas
 
+  @Get('activas')
+  findAllActives() {
+    return this.empresasService.findActives();
+  }
+
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.empresasService.findOneWithRelations(id, 'contactos');
+    return this.empresasService.findOne(id);
   }
 
   @Get('')
@@ -73,5 +59,22 @@ export class EmpresasController {
   @Delete(':id')
   delete(@Param('id', ParseIntPipe) id: number) {
     return this.empresasService.remove(id);
+  }
+
+  @Post('carga-masiva')
+  @UseInterceptors(FileInterceptor('file'))
+  uploadFile(
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addFileTypeValidator({
+          fileType:
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        })
+        .build({ errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY }),
+    )
+    file: Express.Multer.File,
+  ) {
+    console.log(file);
+    return this.empresasService.bulkCreate(file);
   }
 }
