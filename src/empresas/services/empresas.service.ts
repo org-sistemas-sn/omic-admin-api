@@ -6,14 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import {
-  FindOptionsWhere,
-  Repository,
-  Like,
-  Not,
-  IsNull,
-  DataSource,
-} from 'typeorm';
+import { FindOptionsWhere, Repository, Like, IsNull } from 'typeorm';
 import * as ExcelJS from 'exceljs';
 
 import { Empresa } from '../entities/empresa.entity';
@@ -38,7 +31,6 @@ const expectedHeadersFile = [
 export class EmpresasService {
   constructor(
     @InjectRepository(Empresa) private empresaRepo: Repository<Empresa>,
-    private dataSoruce: DataSource,
   ) {}
 
   async create(data: CreateCompanyDto) {
