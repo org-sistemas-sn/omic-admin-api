@@ -28,7 +28,7 @@ export class UsuariosService {
   }
 
   async update(id: number, changes: UpdateUserDto) {
-    const user = await this.usuarioRepo.findOne(id);
+    const user = await this.usuarioRepo.findOneBy({ id });
     if (!user) {
       throw new NotFoundException();
     }
@@ -37,7 +37,7 @@ export class UsuariosService {
   }
 
   async findOne(id: number) {
-    const user = await this.usuarioRepo.findOne(id);
+    const user = await this.usuarioRepo.findOneBy({ id });
     if (!user) {
       throw new NotFoundException();
     }

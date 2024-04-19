@@ -20,7 +20,7 @@ export class FojasService {
   }
 
   async findOne(id: number) {
-    const foja = await this.fojaRepo.findOne(id);
+    const foja = await this.fojaRepo.findOneBy({ id });
     if (!foja) {
       throw new NotFoundException();
     }

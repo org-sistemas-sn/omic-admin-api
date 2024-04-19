@@ -11,7 +11,7 @@ export class EstadosService {
   ) {}
 
   async findOne(id: number) {
-    const state = await this.estadoRepo.findOne(id);
+    const state = await this.estadoRepo.findOneBy({ id });
     if (!state) {
       throw new NotFoundException();
     }

@@ -6,7 +6,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindConditions, Repository, Like, Not, IsNull } from 'typeorm';
+import {
+  FindOptionsWhere,
+  Repository,
+  Like,
+  Not,
+  IsNull,
+  DataSource,
+} from 'typeorm';
 import * as ExcelJS from 'exceljs';
 
 import { Empresa } from '../entities/empresa.entity';
@@ -31,6 +38,7 @@ const expectedHeadersFile = [
 export class EmpresasService {
   constructor(
     @InjectRepository(Empresa) private empresaRepo: Repository<Empresa>,
+    private dataSoruce: DataSource,
   ) {}
 
   async create(data: CreateCompanyDto) {
@@ -46,7 +54,7 @@ export class EmpresasService {
   }
 
   async update(id: number, changes: UpdateCompanyDto) {
-    const company = await this.empresaRepo.findOne(id);
+    const company = await this.empresaRepo.findOneBy({ id });
     if (!company) {
       throw new NotFoundException();
     }
@@ -55,7 +63,7 @@ export class EmpresasService {
   }
 
   async remove(id: number) {
-    const company = await this.empresaRepo.findOne(id);
+    const company = await this.empresaRepo.findOneBy({ id });
     if (!company) {
       throw new NotFoundException();
     }
@@ -63,26 +71,11 @@ export class EmpresasService {
   }
 
   async findOne(id: number) {
-    const company = await this.empresaRepo.findOne(id);
+    const company = await this.empresaRepo.findOneBy({ id });
     if (!company) {
       throw new NotFoundException();
     }
     return company;
-  }
-
-  async findOneWithRelations(id: number, ...relations: string[]) {
-    const company = await this.empresaRepo.findOne(id, { relations });
-    if (!company) {
-      throw new NotFoundException();
-    }
-    return company;
-  }
-
-  async disableOldBulks() {
-    await this.empresaRepo.update(
-      { cargaMasiva: Not(IsNull()) },
-      { isActive: false },
-    );
   }
 
   async updateOrCreate(empresa: string, cuit: string, data) {
@@ -110,7 +103,7 @@ export class EmpresasService {
 
   findAll(params?: FilterCompanyDto) {
     if (params) {
-      const where: FindConditions<Empresa> = {};
+      const where: FindOptionsWhere<Empresa> = {};
       const { limit, offset } = params;
       const { nombre, cuit, email, estado } = params;
       if (nombre) where.nombre = Like(`%${nombre}%`);
@@ -153,6 +146,19 @@ export class EmpresasService {
     return text;
   }
 
+  #formatDate(fecha) {
+    if (typeof fecha == 'object' && fecha != null) {
+      const date = new Date(fecha as any).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      });
+      return date.replaceAll('/', '-');
+    } else {
+      return fecha;
+    }
+  }
+
   async bulkCreate(file: Express.Multer.File) {
     let workbook = new ExcelJS.Workbook();
     workbook = await workbook.xlsx.load(file.buffer);
@@ -188,9 +194,6 @@ export class EmpresasService {
     }
     const dataRows = worksheet.getRows(2, worksheet.rowCount);
 
-    // Desactivar empresas antiguas de carga masiva
-    await this.disableOldBulks();
-
     for (const row of dataRows) {
       const empresa = row.getCell(2).text;
       if (!empresa) break;
@@ -200,7 +203,7 @@ export class EmpresasService {
       const nombreContacto = row.getCell(6).text;
       const estado = row.getCell(7).text;
       const seguimiento = row.getCell(8).text;
-      const fechaAdhesion = row.getCell(9).text;
+      const fechaAdhesion = row.getCell(9).value;
       const declaracionJurada = row.getCell(10).text;
       const pvRegistro = row.getCell(11).text;
       const isActive = true;
@@ -214,7 +217,7 @@ export class EmpresasService {
         nombreContacto: this.#formatText(nombreContacto),
         estado: estado ? estado.toString().toUpperCase() : 'ADHERIDO',
         seguimiento: this.#formatText(seguimiento),
-        fechaAdhesion: this.#formatText(fechaAdhesion),
+        fechaAdhesion: this.#formatDate(fechaAdhesion),
         declaracionJurada: this.#formatText(declaracionJurada),
         pvRegistro: this.#formatText(pvRegistro),
         isActive,

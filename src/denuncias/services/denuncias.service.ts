@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindConditions, Like, Repository } from 'typeorm';
+import { FindOptionsWhere, Like, Repository } from 'typeorm';
 
 import { Denuncia } from '../entities/denuncia.entity';
 import { CreateComplaintDto } from '../dtos/denuncia.dto';
@@ -61,7 +61,7 @@ export class DenunciasService {
         // 'foja.archivos',
       ];
       if (params) {
-        const where: FindConditions<Denuncia> = {};
+        const where: FindOptionsWhere<Denuncia> = {};
         const { limit, offset } = params;
         const { nombre, apellido, dni, email } = params;
 
@@ -108,7 +108,10 @@ export class DenunciasService {
       // 'foja',
       // 'foja.archivos',
     ];
-    const complaint = await this.denunciaRepo.findOne(id, { relations });
+    const complaint = await this.denunciaRepo.findOne({
+      where: { id },
+      relations,
+    });
     if (!complaint) {
       throw new NotFoundException();
     }
