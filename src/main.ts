@@ -23,8 +23,8 @@ async function bootstrap() {
     origin: [
       `https://omic-sn-admin.netlify.app`,
       `http://localhost:3000`,
-      `https://stage--omic-sn-admin.netlify.app/`,
-      `https://omic-sn.netlify.app/`,
+      `https://stage--omic-sn-admin.netlify.app`,
+      `https://omic-sn.netlify.app`,
     ],
     credentials: true,
   });
