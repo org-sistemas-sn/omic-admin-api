@@ -100,4 +100,9 @@ export class DenunciasController {
   findOne(@Param() param: any) {
     return this.denunciaService.findOne(param.id);
   }
+
+  @Get('/download-docx/:id')
+  downloadDocx(@Param() param: any) {
+    return this.denunciaService.downloadDocx(param.id);
+  }
 }

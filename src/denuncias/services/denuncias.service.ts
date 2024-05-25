@@ -13,6 +13,7 @@ import { DenunciantesService } from './denunciantes.service';
 import { DenunciadosService } from './denunciados.service';
 import { EstadosService } from './estados.service';
 import { FilterComplaintDto } from '../dtos/filter.dto';
+import { createDocx } from '../../utils/docxGen';
 
 @Injectable()
 export class DenunciasService {
@@ -54,8 +55,8 @@ export class DenunciasService {
         'autorizado',
         'denunciante',
         'archivos',
-        // 'denunciadoDenuncia',
-        // 'denunciadoDenuncia.denunciado',
+        'denunciadoDenuncia',
+        'denunciadoDenuncia.denunciado',
         // 'denunciados.empresa',
         // 'foja',
         // 'foja.archivos',
@@ -116,5 +117,29 @@ export class DenunciasService {
       throw new NotFoundException();
     }
     return complaint;
+  }
+
+  async downloadDocx(id: number) {
+    const relations = [
+      // 'estado',
+      'autorizado',
+      'denunciante',
+      'denunciadoDenuncia',
+      'denunciadoDenuncia.denunciado',
+      // 'denunciados.empresa',
+      // 'foja',
+      // 'foja.archivos',
+    ];
+    const complaint = await this.denunciaRepo.findOne({
+      where: { id },
+      relations,
+    });
+    if (!complaint) {
+      throw new NotFoundException();
+    }
+
+    const docx = await createDocx(complaint);
+
+    return docx;
   }
 }
