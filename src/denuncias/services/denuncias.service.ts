@@ -90,6 +90,9 @@ export class DenunciasService {
           where,
           take: limit,
           skip: offset,
+          order: {
+            id: 'DESC',
+          },
         });
       }
       return this.denunciaRepo.find({ relations });
