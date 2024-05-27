@@ -23,7 +23,7 @@ export enum estadoGeneral {
   cerrado = 'CERRADO',
 }
 
-@Entity({ name: 'denuncia' })
+@Entity({ name: 'Denuncia' })
 export class Denuncia {
   @PrimaryGeneratedColumn({ name: 'Id_Denuncia' })
   id: number;

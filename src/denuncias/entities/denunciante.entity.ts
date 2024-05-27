@@ -11,7 +11,7 @@ import {
 import { Autorizado } from './autorizado.entity';
 import { Denuncia } from './denuncia.entity';
 
-@Entity({ name: 'denunciante' })
+@Entity({ name: 'Denunciante' })
 export class Denunciante {
   @PrimaryGeneratedColumn({ name: 'Id_Denunciante' })
   id: number;
