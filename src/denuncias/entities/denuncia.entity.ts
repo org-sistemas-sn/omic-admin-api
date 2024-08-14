@@ -60,9 +60,9 @@ export class Denuncia {
   // })
   // estadoGeneral: string;
 
-  // @ManyToOne(() => Estado)
-  // @JoinColumn({ name: 'estado_id' })
-  // estado: Estado;
+  @ManyToOne(() => Estado)
+  @JoinColumn({ name: 'estado_id' })
+  estado: Estado;
 
   @OneToOne(() => Denunciante)
   @JoinColumn({ name: 'Id_Denunciante' })

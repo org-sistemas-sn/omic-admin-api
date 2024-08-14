@@ -14,10 +14,16 @@ export class Estado {
   id: number;
 
   @Column({ type: 'varchar', length: 255 })
-  nombre: string;
+  key: string;
 
-  // @OneToMany(() => Denuncia, (denuncia) => denuncia.estado)
-  // denuncias: Denuncia[];
+  @Column({ type: 'varchar', length: 255 })
+  descripcion: string;
+
+  @Column({ type: 'boolean', default: 1 })
+  show: boolean;
+
+  @OneToMany(() => Denuncia, (denuncia) => denuncia.estado)
+  denuncias: Denuncia[];
 
   @CreateDateColumn({
     name: 'create_at',
