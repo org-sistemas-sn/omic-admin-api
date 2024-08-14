@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsWhere, Like, Repository } from 'typeorm';
+import { Equal, FindOptionsWhere, Like, Repository } from 'typeorm';
 
 import { Denuncia } from '../entities/denuncia.entity';
 import { CreateComplaintDto } from '../dtos/denuncia.dto';
@@ -51,7 +51,7 @@ export class DenunciasService {
   async findAll(params?: FilterComplaintDto) {
     try {
       const relations = [
-        // 'estado',
+        'estado',
         'autorizado',
         'denunciante',
         'archivos',
@@ -64,7 +64,7 @@ export class DenunciasService {
       if (params) {
         const where: FindOptionsWhere<Denuncia> = {};
         const { limit, offset } = params;
-        const { nombre, apellido, dni, email } = params;
+        const { nombre, apellido, dni, email, estado } = params;
 
         if (nombre && !apellido)
           where.denunciante = { nombre: Like(`%${nombre}%`) };
@@ -79,7 +79,10 @@ export class DenunciasService {
         if (dni) where.denunciante = { dni: Like(`%${dni}%`) };
         if (email) where.denunciante = { email: Like(`%${email}%`) };
         // if (estadoGeneral) where.estadoGeneral = estadoGeneral;
-        // if (estado) where.estado = { nombre: estado };
+
+        if (estado) {
+          where.estado = Equal(estado);
+        }
 
         if (!limit) {
           return this.denunciaRepo.find({ relations, where });
@@ -144,5 +147,14 @@ export class DenunciasService {
     const docx = await createDocx(complaint);
 
     return docx;
+  }
+
+  async update(id: number, changes) {
+    const complaint = await this.denunciaRepo.findOneBy({ id });
+    if (!complaint) {
+      throw new NotFoundException();
+    }
+    this.denunciaRepo.merge(complaint, changes);
+    return this.denunciaRepo.save(complaint);
   }
 }
