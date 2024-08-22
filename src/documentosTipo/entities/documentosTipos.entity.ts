@@ -1,3 +1,4 @@
+import { DenunciaDocumentos } from 'src/denuncias/entities/denuncia-documento.entity';
 import {
   Column,
   CreateDateColumn,
@@ -6,11 +7,9 @@ import {
   UpdateDateColumn,
   OneToMany,
 } from 'typeorm';
-import { Denuncia } from './denuncia.entity';
-import { DenunciaEstados } from './denuncia-estado.entity';
 
-@Entity({ name: 'estados' })
-export class Estado {
+@Entity({ name: 'documentos_tipos' })
+export class DocumentosTipos {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -23,11 +22,8 @@ export class Estado {
   @Column({ type: 'boolean', default: 1 })
   show: boolean;
 
-  @OneToMany(() => Denuncia, (denuncia) => denuncia.estado)
-  denuncias: Denuncia[];
-
-  @OneToMany(() => DenunciaEstados, (denuncia) => denuncia.estado)
-  denunciaEstados: DenunciaEstados[];
+  @OneToMany(() => DenunciaDocumentos, (d) => d.documentoTipo)
+  denunciaDocumentos: DenunciaDocumentos[];
 
   @CreateDateColumn({
     name: 'create_at',

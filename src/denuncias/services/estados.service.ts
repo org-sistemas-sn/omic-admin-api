@@ -29,4 +29,16 @@ export class EstadosService {
     }
     return states;
   }
+
+  async findByKey(key) {
+    const states = await this.estadoRepo.findOne({
+      where: {
+        key,
+      },
+    });
+    if (!states) {
+      throw new NotFoundException();
+    }
+    return states;
+  }
 }
