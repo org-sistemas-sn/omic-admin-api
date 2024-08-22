@@ -53,4 +53,20 @@ export class FtpService {
       throw err;
     }
   }
+
+  async fileUpload(
+    source: Readable | string,
+    toRemotePath: string,
+    options?: UploadOptions,
+  ) {
+    try {
+      await this._ftpClient.access(this._options);
+      await this._ftpClient.uploadFrom(source, toRemotePath, options);
+
+      return this._ftpClient.close();
+    } catch (err) {
+      this._ftpClient.close();
+      throw err;
+    }
+  }
 }

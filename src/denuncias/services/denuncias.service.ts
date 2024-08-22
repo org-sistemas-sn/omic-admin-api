@@ -14,16 +14,33 @@ import { DenunciadosService } from './denunciados.service';
 import { EstadosService } from './estados.service';
 import { FilterComplaintDto } from '../dtos/filter.dto';
 import { createDocx } from '../../utils/docxGen';
+import { DenunciaEstadosService } from './denuncia-estados.service';
+import { FtpService } from 'src/ftp/ftp.service';
+import { Readable } from 'stream';
+import { TemplateService } from 'src/template/template.service';
+import * as FormData from 'form-data';
+import axios from 'axios';
+import { DatosNotificacionService } from './datos-notificacion.service';
+import { DocumentosTiposService } from 'src/documentosTipo/services/documentosTipos.service';
+import { DenunciaDocumentosService } from './denuncia-documentos.service';
+import { WeekDays } from '../utils/constants';
 
 @Injectable()
 export class DenunciasService {
+  private _dir = '/images/omic-admin/causas';
   constructor(
     @InjectRepository(Denuncia) private denunciaRepo: Repository<Denuncia>,
     private autorizadoService: AutorizadosService,
     private denunciantesService: DenunciantesService,
     private denunciadosService: DenunciadosService,
     private estadosService: EstadosService,
-  ) {}
+    private denunciaEstadosService: DenunciaEstadosService,
+    private ftpService: FtpService,
+    private templateService: TemplateService,
+    private datosNotificacionService: DatosNotificacionService,
+    private documentosTiposService: DocumentosTiposService,
+    private denunciaDocumentosService: DenunciaDocumentosService,
+  ) { }
 
   async create(data: CreateComplaintDto) {
     const { autorizado, denunciante, denunciados, ...complaint } = data;
@@ -60,6 +77,8 @@ export class DenunciasService {
         // 'denunciados.empresa',
         // 'foja',
         // 'foja.archivos',
+        'denunciaDocumentos',
+        'denunciaDocumentos.documentoTipo',
       ];
       if (params) {
         const where: FindOptionsWhere<Denuncia> = {};
@@ -155,6 +174,211 @@ export class DenunciasService {
       throw new NotFoundException();
     }
     this.denunciaRepo.merge(complaint, changes);
+    return this.denunciaRepo.save(complaint);
+  }
+
+  async aprobbed(data) {
+    const {
+      id,
+      envio_tipo,
+      denunciante_email,
+      denunciado_email,
+      meet_link,
+      date_link,
+      time_link,
+      direccion_postal,
+    } = data;
+
+    const relations = [
+      'denunciante',
+      'denunciadoDenuncia',
+      'denunciadoDenuncia.denunciado',
+    ];
+
+    const complaint = await this.denunciaRepo.findOne({
+      where: { id },
+      relations,
+    });
+
+    if (!complaint) {
+      throw new NotFoundException();
+    }
+    const estado = await this.estadosService.findByKey('ACEPTADO');
+
+    this.denunciaRepo.merge(complaint, { estado });
+
+    const denunciaEstado = await this.denunciaEstadosService.create({
+      denunciaId: id,
+      estadoId: estado,
+    });
+
+    await this.datosNotificacionService.create({
+      ...data,
+      denunciaEstado: denunciaEstado,
+    });
+
+    const nro_expediente = id;
+    const dia = new Date().getDate();
+    const mes = new Date().getMonth() + 1;
+    const año = new Date().getFullYear();
+    const [year_meet, month_meet, day_meet] = date_link.split('-');
+    const weekday_meet = WeekDays[new Date(date_link).getDay()];
+
+    const info = {
+      nro_expediente,
+      dia,
+      mes,
+      año,
+      denunciante: `${complaint.denunciante.apellido} ${complaint.denunciante.nombre}`,
+      denunciado: `${complaint.denunciadoDenuncia[0].denunciado.nombre}`,
+      direccion_denunciante: complaint.denunciante.denuncia,
+      localidad_denunciante: complaint.denunciante.localidad,
+      cod_postal_denunciante: complaint.denunciante.codPostal,
+      provincia_denunciante: 'Buenos Aires',
+      tel_denunciante:
+        complaint.denunciante.telefono || complaint.denunciante.telefonoAlter,
+      email_denunciante: denunciante_email,
+      email_denunciado: denunciado_email,
+    };
+
+    const filesData = [
+      {
+        ...info,
+        email: false,
+        key: 'CARATULA',
+        filename: `${id}_CARATULA_${Date.now()}.docx`,
+        template: 'CARATULA.docx',
+      },
+      {
+        ...info,
+        link_meet: meet_link,
+        year_meet,
+        month_meet,
+        day_meet,
+        weekday_meet,
+        hhmm_meet: time_link,
+        email: denunciante_email,
+        key: 'CEDULA_APERTURA_DENUNCIANTE',
+        filename: `${id}_CEDULA_DENUNCIANTE_${Date.now()}.docx`,
+        template: 'CEDULA_APERTURA_DENUNCIANTE.docx',
+      },
+      {
+        ...info,
+        link_meet: meet_link,
+        year_meet,
+        month_meet,
+        day_meet,
+        weekday_meet,
+        hhmm_meet: time_link,
+        email: denunciado_email,
+        key: 'CEDULA_APERTURA_DENUNCIADO',
+        filename: `${id}_CEDULA_DENUNCIADO_${Date.now()}.docx`,
+        template: 'CEDULA_APERTURA_DENUNCIADO.docx',
+      },
+    ];
+
+    await this.ftpService.connect();
+    const ruta = `${this._dir}/${id}`;
+    await this.ftpService.createDir(ruta);
+    this.ftpService.close();
+
+    // const promises = filesData.map(async (e) => {
+
+    for (const e of filesData) {
+      const file: any = await this.templateService.createDocx(e, e.template);
+
+      if (e.email) {
+        const form = new FormData();
+        const dataNot = [
+          {
+            email: e.email,
+            bodyEmail: {},
+            files: [e.filename],
+          },
+        ];
+
+        form.append('method', 'denuncia_aprobada');
+        form.append('data', JSON.stringify({ data: dataNot }));
+        form.append('hasFiles', 'true');
+        form.append(e.filename, file, { filename: e.filename });
+
+        await axios.post(
+          'https://notificaciones-8abd2b855cde.herokuapp.com/api/notifications',
+          form,
+          {
+            headers: {
+              'api-key': 'fJfCznx805geZEjuvAU533raN4HNh4WB',
+            },
+          },
+        );
+      }
+
+      // return res.data;
+      const stream = Readable.from(file);
+      const remotePath = ruta + `/${e.filename}`;
+
+      await this.ftpService.fileUpload(stream, remotePath);
+
+      const documentoTipo = await this.documentosTiposService.findByKey(e.key);
+
+      await this.denunciaDocumentosService.create({
+        denunciaId: complaint.id,
+        documentoTipoId: documentoTipo.id,
+        fileName: e.filename,
+        path: remotePath,
+      });
+    }
+    // });
+
+    // await Promise.all(promises);
+
+    return this.denunciaRepo.save(complaint);
+  }
+
+  async reject(data) {
+    const { id, denunciante_email, motivo, enviar_mail } = data;
+    const complaint = await this.denunciaRepo.findOneBy({ id });
+    if (!complaint) {
+      throw new NotFoundException();
+    }
+    const estado = await this.estadosService.findByKey('RECHAZADO');
+    this.denunciaRepo.merge(complaint, { estado });
+
+    const denunciaEstado = await this.denunciaEstadosService.create({
+      denunciaId: id,
+      estadoId: estado,
+      motivo,
+    });
+
+    await this.datosNotificacionService.create({
+      ...data,
+      denunciaEstado: denunciaEstado,
+    });
+
+    if (enviar_mail) {
+      const dataNot = {
+        method: 'denuncia_rechazada',
+        data: [
+          {
+            email: denunciante_email,
+            bodyEmail: {
+              motivo,
+            },
+          },
+        ],
+      };
+
+      await axios.post(
+        'https://notificaciones-8abd2b855cde.herokuapp.com/api/notifications',
+        dataNot,
+        {
+          headers: {
+            'api-key': 'fJfCznx805geZEjuvAU533raN4HNh4WB',
+          },
+        },
+      );
+    }
+
     return this.denunciaRepo.save(complaint);
   }
 }

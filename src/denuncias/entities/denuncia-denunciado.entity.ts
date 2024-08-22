@@ -4,9 +4,11 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
   JoinColumn,
+  OneToOne,
 } from 'typeorm';
 import { Denuncia } from './denuncia.entity';
 import { Denunciado } from './denunciado.entity';
+import { DatosNotificacion } from './datos-notificacion.entity';
 
 @Entity({ name: 'Denunciado_Denuncia' })
 export class DenunciadoDenuncia {

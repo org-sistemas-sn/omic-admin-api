@@ -17,6 +17,8 @@ import { Estado } from './estados.entity';
 import { DenunciadoDenuncia } from './denuncia-denunciado.entity';
 import { Autorizado } from './autorizado.entity';
 import { Archivo } from './archivo.entity';
+import { DenunciaEstados } from './denuncia-estado.entity';
+import { DenunciaDocumentos } from './denuncia-documento.entity';
 
 export enum estadoGeneral {
   abierto = 'ABIERTO',
@@ -77,6 +79,12 @@ export class Denuncia {
     (denunciadoDenuncia) => denunciadoDenuncia.denuncia,
   )
   denunciadoDenuncia: DenunciadoDenuncia[];
+
+  @OneToMany(() => DenunciaEstados, (d) => d.denuncia)
+  denunciaEstados: DenunciaEstados[];
+
+  @OneToMany(() => DenunciaDocumentos, (d) => d.denuncia)
+  denunciaDocumentos: DenunciaDocumentos[];
 
   @OneToMany(() => Archivo, (archivo) => archivo.denuncia)
   archivos: Archivo[];

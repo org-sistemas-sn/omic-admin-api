@@ -119,4 +119,14 @@ export class DenunciasController {
   downloadDocx(@Param() param: any) {
     return this.denunciaService.downloadDocx(param.id);
   }
+
+  @Post('/aprobbed')
+  create(@Body() payload: any) {
+    return this.denunciaService.aprobbed(payload);
+  }
+
+  @Post('/reject')
+  reject(@Body() payload: any) {
+    return this.denunciaService.reject(payload);
+  }
 }
