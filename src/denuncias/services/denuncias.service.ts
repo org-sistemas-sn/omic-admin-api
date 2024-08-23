@@ -40,7 +40,7 @@ export class DenunciasService {
     private datosNotificacionService: DatosNotificacionService,
     private documentosTiposService: DocumentosTiposService,
     private denunciaDocumentosService: DenunciaDocumentosService,
-  ) { }
+  ) {}
 
   async create(data: CreateComplaintDto) {
     const { autorizado, denunciante, denunciados, ...complaint } = data;
@@ -217,12 +217,12 @@ export class DenunciasService {
       denunciaEstado: denunciaEstado,
     });
 
-    const nro_expediente = id;
     const dia = new Date().getDate();
     const mes = new Date().getMonth() + 1;
     const año = new Date().getFullYear();
     const [year_meet, month_meet, day_meet] = date_link.split('-');
     const weekday_meet = WeekDays[new Date(date_link).getDay()];
+    const nro_expediente = `${id}/${complaint.denunciante.apellido[0]}/${año}`;
 
     const info = {
       nro_expediente,
@@ -244,13 +244,6 @@ export class DenunciasService {
     const filesData = [
       {
         ...info,
-        email: false,
-        key: 'CARATULA',
-        filename: `${id}_CARATULA_${Date.now()}.docx`,
-        template: 'CARATULA.docx',
-      },
-      {
-        ...info,
         link_meet: meet_link,
         year_meet,
         month_meet,
@@ -261,6 +254,10 @@ export class DenunciasService {
         key: 'CEDULA_APERTURA_DENUNCIANTE',
         filename: `${id}_CEDULA_DENUNCIANTE_${Date.now()}.docx`,
         template: 'CEDULA_APERTURA_DENUNCIANTE.docx',
+        caratula: true,
+        caratula_key: 'CARATULA',
+        caratula_filename: `${id}_CARATULA_${Date.now()}.docx`,
+        caratula_template: 'CARATULA.docx',
       },
       {
         ...info,
@@ -274,6 +271,10 @@ export class DenunciasService {
         key: 'CEDULA_APERTURA_DENUNCIADO',
         filename: `${id}_CEDULA_DENUNCIADO_${Date.now()}.docx`,
         template: 'CEDULA_APERTURA_DENUNCIADO.docx',
+        caratula: false,
+        caratula_key: null,
+        caratula_filename: null,
+        caratula_template: null,
       },
     ];
 
@@ -282,10 +283,29 @@ export class DenunciasService {
     await this.ftpService.createDir(ruta);
     this.ftpService.close();
 
-    // const promises = filesData.map(async (e) => {
-
     for (const e of filesData) {
-      const file: any = await this.templateService.createDocx(e, e.template);
+      const files = [];
+
+      const file = await this.templateService.createDocx(e, e.template);
+
+      files.push({
+        file,
+        filename: e.filename,
+        key: e.key,
+      });
+
+      if (e.caratula) {
+        const caratula = await this.templateService.createDocx(
+          e,
+          e.caratula_template,
+        );
+
+        files.push({
+          file: caratula,
+          filename: e.caratula_filename,
+          key: e.caratula_key,
+        });
+      }
 
       if (e.email) {
         const form = new FormData();
@@ -293,14 +313,16 @@ export class DenunciasService {
           {
             email: e.email,
             bodyEmail: {},
-            files: [e.filename],
+            files: files.map((f) => f.filename),
           },
         ];
 
         form.append('method', 'denuncia_aprobada');
         form.append('data', JSON.stringify({ data: dataNot }));
         form.append('hasFiles', 'true');
-        form.append(e.filename, file, { filename: e.filename });
+        for (const f of files) {
+          form.append(f.filename, f.file, { filename: f.filename });
+        }
 
         await axios.post(
           'https://notificaciones-8abd2b855cde.herokuapp.com/api/notifications',
@@ -313,24 +335,24 @@ export class DenunciasService {
         );
       }
 
-      // return res.data;
-      const stream = Readable.from(file);
-      const remotePath = ruta + `/${e.filename}`;
+      for (const f of files) {
+        const stream = Readable.from(f.file);
+        const remotePath = ruta + `/${f.filename}`;
 
-      await this.ftpService.fileUpload(stream, remotePath);
+        await this.ftpService.fileUpload(stream, remotePath);
 
-      const documentoTipo = await this.documentosTiposService.findByKey(e.key);
+        const documentoTipo = await this.documentosTiposService.findByKey(
+          f.key,
+        );
 
-      await this.denunciaDocumentosService.create({
-        denunciaId: complaint.id,
-        documentoTipoId: documentoTipo.id,
-        fileName: e.filename,
-        path: remotePath,
-      });
+        await this.denunciaDocumentosService.create({
+          denunciaId: complaint.id,
+          documentoTipoId: documentoTipo.id,
+          fileName: f.filename,
+          path: remotePath,
+        });
+      }
     }
-    // });
-
-    // await Promise.all(promises);
 
     return this.denunciaRepo.save(complaint);
   }
