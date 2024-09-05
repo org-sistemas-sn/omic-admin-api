@@ -275,6 +275,16 @@ export class DenunciasService {
       caratula_template,
     );
 
+    const apertura_key = 'APERTURA_INSTANCIA';
+    const apertura_filename = `${id}_APERTURA_INSTANCIA_${Date.now()}.docx`;
+    const apertura_template = 'APERTURA_DE_INSTANCIA.docx';
+
+    const apertura: any = await this.templateService.createDocx(
+      info,
+      apertura_template,
+    );
+
+    // GUARDAR CARATULA
     await this.ftpService.connect();
     const ruta = `${this._dir}/${id}`;
     await this.ftpService.createDir(ruta);
@@ -282,7 +292,6 @@ export class DenunciasService {
 
     const stream = Readable.from(caratula);
     const remotePath = ruta + `/${caratula_filename}`;
-
     await this.ftpService.fileUpload(stream, remotePath);
 
     const documentoTipo = await this.documentosTiposService.findByKey(
@@ -296,6 +305,22 @@ export class DenunciasService {
       path: remotePath,
     });
 
+    // GUARDAR APERTURA
+    const apertura_stream = Readable.from(apertura);
+    const apertura_remotePath = ruta + `/${apertura_filename}`;
+    await this.ftpService.fileUpload(apertura_stream, apertura_remotePath);
+
+    const apertura_documentoTipo = await this.documentosTiposService.findByKey(
+      apertura_key,
+    );
+
+    await this.denunciaDocumentosService.create({
+      denunciaId: complaint.id,
+      documentoTipoId: apertura_documentoTipo.id,
+      fileName: apertura_filename,
+      path: apertura_remotePath,
+    });
+
     for (const e of filesData) {
       const file: any = await this.templateService.createDocx(e, e.template);
 
@@ -307,15 +332,15 @@ export class DenunciasService {
             bodyEmail: {
               message: e.message,
             },
-            files: [caratula_filename, e.filename],
+            files: [apertura_filename, e.filename],
           },
         ];
 
         form.append('method', 'denuncia_aprobada');
         form.append('data', JSON.stringify({ data: dataNot }));
         form.append('hasFiles', 'true');
-        form.append(caratula_filename, caratula, {
-          filename: caratula_filename,
+        form.append(apertura_filename, apertura, {
+          filename: apertura_filename,
         });
         form.append(e.filename, file, { filename: e.filename });
 
