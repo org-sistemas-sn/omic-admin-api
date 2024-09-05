@@ -79,6 +79,7 @@ export class DenunciasService {
         // 'foja.archivos',
         'denunciaDocumentos',
         'denunciaDocumentos.documentoTipo',
+        'denunciaEstados',
       ];
       if (params) {
         const where: FindOptionsWhere<Denuncia> = {};
@@ -180,13 +181,12 @@ export class DenunciasService {
   async aprobbed(data) {
     const {
       id,
-      envio_tipo,
       denunciante_email,
       denunciado_email,
       meet_link,
       date_link,
       time_link,
-      direccion_postal,
+      userId,
     } = data;
 
     const relations = [
@@ -210,6 +210,7 @@ export class DenunciasService {
     const denunciaEstado = await this.denunciaEstadosService.create({
       denunciaId: id,
       estadoId: estado,
+      usuarioId: userId,
     });
 
     await this.datosNotificacionService.create({
@@ -251,7 +252,7 @@ export class DenunciasService {
       {
         ...info,
         email: denunciante_email,
-        message: 'Su denuncia fue',
+        message: `Su denuncia contra ${info.denunciado} fue`,
         key: 'CEDULA_APERTURA_DENUNCIANTE',
         filename: `${id}_CEDULA_DENUNCIANTE_${Date.now()}.docx`,
         template: 'CEDULA_APERTURA_DENUNCIANTE.docx',
@@ -374,8 +375,19 @@ export class DenunciasService {
   }
 
   async reject(data) {
-    const { id, denunciante_email, motivo, enviar_mail } = data;
-    const complaint = await this.denunciaRepo.findOneBy({ id });
+    const { id, denunciante_email, motivo, enviar_mail, userId } = data;
+
+    const relations = [
+      'denunciante',
+      'denunciadoDenuncia',
+      'denunciadoDenuncia.denunciado',
+    ];
+
+    const complaint = await this.denunciaRepo.findOne({
+      where: { id },
+      relations,
+    });
+
     if (!complaint) {
       throw new NotFoundException();
     }
@@ -386,6 +398,7 @@ export class DenunciasService {
       denunciaId: id,
       estadoId: estado,
       motivo,
+      usuarioId: userId,
     });
 
     await this.datosNotificacionService.create({
@@ -400,6 +413,7 @@ export class DenunciasService {
           {
             email: denunciante_email,
             bodyEmail: {
+              message: `Su denuncia contra ${`${complaint.denunciadoDenuncia[0].denunciado.nombre}`} fue:`,
               motivo,
             },
           },
