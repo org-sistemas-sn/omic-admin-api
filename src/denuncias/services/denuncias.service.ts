@@ -251,6 +251,7 @@ export class DenunciasService {
       {
         ...info,
         email: denunciante_email,
+        message: 'Su denuncia fue',
         key: 'CEDULA_APERTURA_DENUNCIANTE',
         filename: `${id}_CEDULA_DENUNCIANTE_${Date.now()}.docx`,
         template: 'CEDULA_APERTURA_DENUNCIANTE.docx',
@@ -258,6 +259,7 @@ export class DenunciasService {
       {
         ...info,
         email: denunciado_email,
+        message: 'La denuncia en su contra fue',
         key: 'CEDULA_APERTURA_DENUNCIADO',
         filename: `${id}_CEDULA_DENUNCIADO_${Date.now()}.docx`,
         template: 'CEDULA_APERTURA_DENUNCIADO.docx',
@@ -302,7 +304,9 @@ export class DenunciasService {
         const dataNot = [
           {
             email: e.email,
-            bodyEmail: {},
+            bodyEmail: {
+              message: e.message,
+            },
             files: [caratula_filename, e.filename],
           },
         ];
