@@ -17,4 +17,28 @@ export class EstadosService {
     }
     return state;
   }
+
+  async findAll() {
+    const states = await this.estadoRepo.find({
+      where: {
+        show: true,
+      },
+    });
+    if (!states) {
+      throw new NotFoundException();
+    }
+    return states;
+  }
+
+  async findByKey(key) {
+    const states = await this.estadoRepo.findOne({
+      where: {
+        key,
+      },
+    });
+    if (!states) {
+      throw new NotFoundException();
+    }
+    return states;
+  }
 }

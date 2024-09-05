@@ -2,10 +2,12 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Exclude } from 'class-transformer';
+import { DenunciaEstados } from 'src/denuncias/entities/denuncia-estado.entity';
 
 @Entity({ name: 'usuarios' })
 export class Usuario {
@@ -28,6 +30,9 @@ export class Usuario {
   @Exclude()
   @Column({ nullable: true, name: 'refresh_token' })
   refreshToken: string;
+
+  @OneToMany(() => DenunciaEstados, (denuncia) => denuncia.usuario)
+  denunciaEstados: DenunciaEstados[];
 
   @CreateDateColumn({
     name: 'create_at',

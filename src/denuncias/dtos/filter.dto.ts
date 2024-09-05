@@ -6,6 +6,7 @@ import {
   Min,
   ValidateIf,
   IsDateString,
+  IsNumber,
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { estadoGeneral } from '../entities/denuncia.entity';
@@ -45,9 +46,9 @@ export class FilterComplaintDto {
   readonly email: string;
 
   @ApiPropertyOptional()
-  @IsString()
+  @IsNumber()
   @IsOptional()
-  readonly estado: string;
+  readonly estado: number;
 
   @ApiPropertyOptional()
   @IsOptional()

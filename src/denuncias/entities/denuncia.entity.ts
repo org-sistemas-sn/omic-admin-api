@@ -17,6 +17,8 @@ import { Estado } from './estados.entity';
 import { DenunciadoDenuncia } from './denuncia-denunciado.entity';
 import { Autorizado } from './autorizado.entity';
 import { Archivo } from './archivo.entity';
+import { DenunciaEstados } from './denuncia-estado.entity';
+import { DenunciaDocumentos } from './denuncia-documento.entity';
 
 export enum estadoGeneral {
   abierto = 'ABIERTO',
@@ -60,9 +62,9 @@ export class Denuncia {
   // })
   // estadoGeneral: string;
 
-  // @ManyToOne(() => Estado)
-  // @JoinColumn({ name: 'estado_id' })
-  // estado: Estado;
+  @ManyToOne(() => Estado)
+  @JoinColumn({ name: 'estado_id' })
+  estado: Estado;
 
   @OneToOne(() => Denunciante)
   @JoinColumn({ name: 'Id_Denunciante' })
@@ -77,6 +79,12 @@ export class Denuncia {
     (denunciadoDenuncia) => denunciadoDenuncia.denuncia,
   )
   denunciadoDenuncia: DenunciadoDenuncia[];
+
+  @OneToMany(() => DenunciaEstados, (d) => d.denuncia)
+  denunciaEstados: DenunciaEstados[];
+
+  @OneToMany(() => DenunciaDocumentos, (d) => d.denuncia)
+  denunciaDocumentos: DenunciaDocumentos[];
 
   @OneToMany(() => Archivo, (archivo) => archivo.denuncia)
   archivos: Archivo[];

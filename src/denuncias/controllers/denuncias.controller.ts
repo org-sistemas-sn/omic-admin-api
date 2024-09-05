@@ -9,6 +9,8 @@ import {
   Query,
   UsePipes,
   Param,
+  Put,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { ApiTags } from '@nestjs/swagger';
@@ -19,6 +21,7 @@ import { DenunciasService } from '../services/denuncias.service';
 import { FojasService } from '../../fojas/services/fojas.service';
 import { ArchivosService } from '../../fojas/services/archivos.service';
 import { FilterComplaintDto } from '../dtos/filter.dto';
+import { EstadosService } from '../services/estados.service';
 
 @ApiTags('Denuncias')
 @Controller('denuncias')
@@ -27,6 +30,7 @@ export class DenunciasController {
     private denunciaService: DenunciasService,
     private fojasService: FojasService,
     private archivosService: ArchivosService,
+    private estadosService: EstadosService,
   ) {}
   @Post('')
   @UseInterceptors(
@@ -96,13 +100,33 @@ export class DenunciasController {
     return this.denunciaService.findAll(params);
   }
 
+  @Get('/states')
+  findStates() {
+    return this.estadosService.findAll();
+  }
+
   @Get(':id')
   findOne(@Param() param: any) {
     return this.denunciaService.findOne(param.id);
   }
 
+  @Put(':id')
+  update(@Param('id', ParseIntPipe) id: number, @Body() payload) {
+    return this.denunciaService.update(id, payload);
+  }
+
   @Get('/download-docx/:id')
   downloadDocx(@Param() param: any) {
     return this.denunciaService.downloadDocx(param.id);
+  }
+
+  @Post('/aprobbed')
+  create(@Body() payload: any) {
+    return this.denunciaService.aprobbed(payload);
+  }
+
+  @Post('/reject')
+  reject(@Body() payload: any) {
+    return this.denunciaService.reject(payload);
   }
 }
