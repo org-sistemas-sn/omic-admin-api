@@ -433,4 +433,32 @@ export class DenunciasService {
 
     return this.denunciaRepo.save(complaint);
   }
+
+  async revert(data) {
+    const { id, userId } = data;
+
+    const complaint = await this.denunciaRepo.findOne({
+      where: { id },
+    });
+
+    if (!complaint) {
+      throw new NotFoundException();
+    }
+
+    const estado = await this.estadosService.findByKey('RECIBIDA');
+    this.denunciaRepo.merge(complaint, { estado });
+
+    const denunciaEstado = await this.denunciaEstadosService.create({
+      denunciaId: id,
+      estadoId: estado,
+      usuarioId: userId,
+    });
+
+    await this.datosNotificacionService.create({
+      ...data,
+      denunciaEstado: denunciaEstado,
+    });
+
+    return this.denunciaRepo.save(complaint);
+  }
 }
