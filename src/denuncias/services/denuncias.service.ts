@@ -84,7 +84,7 @@ export class DenunciasService {
       if (params) {
         const where: FindOptionsWhere<Denuncia> = {};
         const { limit, offset } = params;
-        const { nombre, apellido, dni, email, estado } = params;
+        const { nombre, apellido, dni, email, estado, orden = 'DESC' } = params;
 
         if (nombre && !apellido)
           where.denunciante = { nombre: Like(`%${nombre}%`) };
@@ -114,7 +114,7 @@ export class DenunciasService {
           take: limit,
           skip: offset,
           order: {
-            id: 'DESC',
+            id: orden,
           },
         });
       }

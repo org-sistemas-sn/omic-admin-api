@@ -59,4 +59,8 @@ export class FilterComplaintDto {
   @ValidateIf((item) => item.limit)
   @Min(0)
   readonly offset: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  readonly orden: any;
 }
