@@ -27,7 +27,7 @@ import { WeekDays } from '../utils/constants';
 
 @Injectable()
 export class DenunciasService {
-  private _dir = '/images/omic-admin/causas';
+  private _dir = '/images/omic-admin-dev/causas';
   constructor(
     @InjectRepository(Denuncia) private denunciaRepo: Repository<Denuncia>,
     private autorizadoService: AutorizadosService,
@@ -182,7 +182,7 @@ export class DenunciasService {
     const {
       id,
       denunciante_email,
-      denunciado_email,
+      denunciados,
       meet_link,
       date_link,
       time_link,
@@ -231,7 +231,9 @@ export class DenunciasService {
       mes,
       año,
       denunciante: `${complaint.denunciante.apellido} ${complaint.denunciante.nombre}`,
-      denunciado: `${complaint.denunciadoDenuncia[0].denunciado.nombre}`,
+      denunciado: `${complaint.denunciadoDenuncia[0].denunciado.nombre}${
+        complaint.denunciadoDenuncia?.length > 1 ? ' y otros.' : ''
+      }`,
       direccion_denunciante: complaint.denunciante.denuncia,
       localidad_denunciante: complaint.denunciante.localidad,
       cod_postal_denunciante: complaint.denunciante.codPostal,
@@ -239,7 +241,9 @@ export class DenunciasService {
       tel_denunciante:
         complaint.denunciante.telefono || complaint.denunciante.telefonoAlter,
       email_denunciante: denunciante_email,
-      email_denunciado: denunciado_email,
+      email_denunciado: `${denunciados[0]}${
+        denunciados.length > 1 ? ' y otros.' : ''
+      }`,
       link_meet: meet_link,
       year_meet,
       month_meet,
@@ -259,7 +263,7 @@ export class DenunciasService {
       },
       {
         ...info,
-        email: denunciado_email,
+        email: denunciados,
         message: 'La denuncia en su contra fue',
         key: 'CEDULA_APERTURA_DENUNCIADO',
         filename: `${id}_CEDULA_DENUNCIADO_${Date.now()}.docx`,
@@ -322,6 +326,13 @@ export class DenunciasService {
       path: apertura_remotePath,
     });
 
+    const files = [
+      {
+        filename: apertura_filename,
+        file: apertura,
+      },
+    ];
+
     for (const e of filesData) {
       const file: any = await this.templateService.createDocx(e, e.template);
 
@@ -361,6 +372,11 @@ export class DenunciasService {
 
       await this.ftpService.fileUpload(stream, remotePath);
 
+      files.push({
+        file,
+        filename: e.filename,
+      });
+
       const documentoTipo = await this.documentosTiposService.findByKey(e.key);
 
       await this.denunciaDocumentosService.create({
@@ -370,6 +386,35 @@ export class DenunciasService {
         path: remotePath,
       });
     }
+
+    const form = new FormData();
+    const dataNot = [
+      {
+        email: 'joseilucci@gmail.com',
+        bodyEmail: {
+          message: `Documentos de la denuncia Expte: Nº ${info.nro_expediente}`,
+        },
+        files: files.map((e) => e.filename),
+      },
+    ];
+
+    form.append('method', 'denuncia_omic');
+    form.append('data', JSON.stringify({ data: dataNot }));
+    form.append('hasFiles', 'true');
+
+    files.forEach((e) => {
+      form.append(e.filename, e.file, { filename: e.filename });
+    });
+
+    axios.post(
+      'https://notificaciones-8abd2b855cde.herokuapp.com/api/notifications',
+      form,
+      {
+        headers: {
+          'api-key': 'fJfCznx805geZEjuvAU533raN4HNh4WB',
+        },
+      },
+    );
 
     return this.denunciaRepo.save(complaint);
   }
@@ -437,12 +482,21 @@ export class DenunciasService {
   async revert(data) {
     const { id, userId } = data;
 
+    const relations = ['denunciante', 'denunciaDocumentos'];
+
     const complaint = await this.denunciaRepo.findOne({
       where: { id },
+      relations,
     });
 
     if (!complaint) {
       throw new NotFoundException();
+    }
+
+    for (const e of complaint.denunciaDocumentos) {
+      await this.ftpService.remove(e.path);
+
+      await this.denunciaDocumentosService.delete(e);
     }
 
     const estado = await this.estadosService.findByKey('RECIBIDA');
