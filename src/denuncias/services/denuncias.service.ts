@@ -242,7 +242,7 @@ export class DenunciasService {
         complaint.denunciante.telefono || complaint.denunciante.telefonoAlter,
       email_denunciante: denunciante_email,
       email_denunciado: `${denunciados[0]}${
-        denunciados.length > 1 ? ' y otros.' : ''
+        complaint.denunciadoDenuncia?.length > 1 ? ' y otros.' : ''
       }`,
       link_meet: meet_link,
       year_meet,
@@ -493,11 +493,11 @@ export class DenunciasService {
       throw new NotFoundException();
     }
 
-    for (const e of complaint.denunciaDocumentos) {
-      await this.ftpService.remove(e.path);
+    // for (const e of complaint.denunciaDocumentos) {
+    //   await this.ftpService.remove(e.path);
 
-      await this.denunciaDocumentosService.delete(e);
-    }
+    //   await this.denunciaDocumentosService.delete(e);
+    // }
 
     const estado = await this.estadosService.findByKey('RECIBIDA');
     this.denunciaRepo.merge(complaint, { estado });
