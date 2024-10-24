@@ -69,4 +69,16 @@ export class FtpService {
       throw err;
     }
   }
+
+  async remove(toRemotePath: string) {
+    try {
+      await this._ftpClient.access(this._options);
+      await this._ftpClient.remove(toRemotePath);
+
+      return this._ftpClient.close();
+    } catch (err) {
+      this._ftpClient.close();
+      throw err;
+    }
+  }
 }
