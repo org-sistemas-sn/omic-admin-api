@@ -16,4 +16,8 @@ export class DenunciaDocumentosService {
 
     await this.denunciaDocumentosRepo.save(newDenounced);
   }
+
+  async delete(denunciaDocumento: DenunciaDocumentos) {
+    return this.denunciaDocumentosRepo.delete(denunciaDocumento);
+  }
 }

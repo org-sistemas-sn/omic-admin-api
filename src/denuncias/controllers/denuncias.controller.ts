@@ -129,4 +129,9 @@ export class DenunciasController {
   reject(@Body() payload: any) {
     return this.denunciaService.reject(payload);
   }
+
+  @Post('/revert')
+  revert(@Body() payload: any) {
+    return this.denunciaService.revert(payload);
+  }
 }
