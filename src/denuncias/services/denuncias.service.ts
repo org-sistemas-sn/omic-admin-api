@@ -390,6 +390,13 @@ export class DenunciasService {
     const form = new FormData();
     const dataNot = [
       {
+        email: 'omicsannicolas@sannicolas.gob.ar',
+        bodyEmail: {
+          message: `Documentos de la denuncia Expte: Nº ${info.nro_expediente}`,
+        },
+        files: files.map((e) => e.filename),
+      },
+      {
         email: 'joseilucci@gmail.com',
         bodyEmail: {
           message: `Documentos de la denuncia Expte: Nº ${info.nro_expediente}`,
