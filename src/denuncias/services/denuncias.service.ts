@@ -416,12 +416,36 @@ export class DenunciasService {
       });
     }
 
-    for (const denunciado of denunciados) {
+    const denunciadosRes = denunciados.reduce((prev, current) => {
+      const index = prev.findIndex((e) => e.id === current.id);
+
+      if (index !== -1) {
+        prev[index].email = [...prev[index].email, current.email];
+
+        return prev;
+      } else {
+        return [
+          ...prev,
+          {
+            ...current,
+            email: [current.email],
+          },
+        ];
+      }
+    }, []);
+
+    for (const denunciado of denunciadosRes) {
       const file: any = await this.templateService.createDocx(
         {
           ...info,
           denunciado: denunciado.nombre,
-          email_denunciado: denunciado.email,
+          email_denunciado: denunciado.email?.reduce((prev, current) => {
+            if (prev) {
+              return prev + `, ${current}`;
+            } else {
+              return current;
+            }
+          }, ''),
         },
         denunciadosFiles.template,
       );
@@ -457,7 +481,6 @@ export class DenunciasService {
           filename: denunciadosFiles.filename,
         });
 
-        console.log(dataNot);
         axios.post(
           'https://notificaciones-8abd2b855cde.herokuapp.com/api/notifications',
           form,
