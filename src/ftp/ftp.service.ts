@@ -1,7 +1,7 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { Client, UploadOptions, FTPResponse, AccessOptions } from 'basic-ftp';
-import { Readable } from 'stream';
+import { Readable, Writable } from 'stream';
 
 import config from 'src/config';
 
@@ -79,6 +79,40 @@ export class FtpService {
     } catch (err) {
       this._ftpClient.close();
       throw err;
+    }
+  }
+
+  async downloadFileAsBuffer(fromRemotePath) {
+    try {
+      await this._ftpClient.access(this._options);
+      console.log('Conexión exitosa');
+
+      // Crea un array para almacenar los datos en cada chunk
+      const chunks = [];
+
+      // Crea un Writable stream en memoria para capturar los datos
+      const writableStream = new Writable({
+        write(chunk, encoding, callback) {
+          chunks.push(chunk); // Agrega cada chunk al array
+          callback();
+        },
+      });
+
+      // Descarga el archivo al Writable stream
+      await this._ftpClient.downloadTo(writableStream, fromRemotePath);
+
+      // Combina todos los chunks en un solo Buffer
+      const buffer = Buffer.concat(chunks);
+
+      // Ahora puedes utilizar el buffer o convertirlo en un blob si lo necesitas
+      // Ejemplo de conversión a Blob en un entorno de navegador:
+      // const blob = new Blob([buffer]);
+      this._ftpClient.close();
+
+      return buffer;
+    } catch (err) {
+      console.error('Error:', err);
+      this._ftpClient.close();
     }
   }
 }

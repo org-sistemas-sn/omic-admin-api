@@ -54,6 +54,9 @@ export class Denuncia {
   @Column({ type: 'date', name: 'Fecha' })
   fecha: Date;
 
+  @Column({ type: 'varchar', name: 'Nro_Expediente' })
+  nroExpediente: string;
+
   // @Column({
   //   type: 'enum',
   //   enum: estadoGeneral,
@@ -91,4 +94,7 @@ export class Denuncia {
 
   // @OneToOne(() => Foja, (foja) => foja.denuncia)
   // foja: Foja;
+
+  // @OneToOne(() => Causa, (causa) => causa.denunciaId)
+  // causa: Causa;
 }
