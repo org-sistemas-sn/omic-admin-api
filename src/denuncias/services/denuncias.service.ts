@@ -380,7 +380,7 @@ export class DenunciasService {
     const stream = Readable.from(file);
     const remotePath = ruta + `/${denuncianteFiles.filename}`;
 
-    await this.ftpService.fileUpload(stream, remotePath);
+    this.ftpService.fileUpload(stream, remotePath);
 
     files.push({
       file,
@@ -391,7 +391,7 @@ export class DenunciasService {
       denuncianteFiles.key,
     );
 
-    await this.denunciaDocumentosService.create({
+    this.denunciaDocumentosService.create({
       denunciaId: denuncia.id,
       documentoTipoId: documento.id,
       fileName: denuncianteFiles.filename,
@@ -472,7 +472,7 @@ export class DenunciasService {
       const stream = Readable.from(file);
       const remotePath = ruta + `/${denunciadosFiles.filename}`;
 
-      await this.ftpService.fileUpload(stream, remotePath);
+      this.ftpService.fileUpload(stream, remotePath);
 
       files.push({
         file,
@@ -483,7 +483,7 @@ export class DenunciasService {
         denunciadosFiles.key,
       );
 
-      await this.denunciaDocumentosService.create({
+      this.denunciaDocumentosService.create({
         denunciaId: denuncia.id,
         documentoTipoId: documentoTipo.id,
         fileName: denunciadosFiles.filename,
@@ -558,7 +558,7 @@ export class DenunciasService {
       usuarioId: userId,
     });
 
-    await this.datosNotificacionService.create({
+    this.datosNotificacionService.create({
       ...data,
       denunciaEstado: denunciaEstado,
     });
@@ -577,7 +577,7 @@ export class DenunciasService {
         ],
       };
 
-      await axios.post(
+      axios.post(
         'https://notificaciones-8abd2b855cde.herokuapp.com/api/notifications',
         dataNot,
         {
