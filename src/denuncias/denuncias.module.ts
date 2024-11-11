@@ -24,6 +24,7 @@ import { TemplateService } from 'src/template/template.service';
 import { DatosNotificacionService } from './services/datos-notificacion.service';
 import { DocumentosTipoModule } from 'src/documentosTipo/documentosTipos.module';
 import { DenunciaDocumentosService } from './services/denuncia-documentos.service';
+import { DenunciadoDenunciaService } from './services/denunciado-denuncia.service';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { DenunciaDocumentosService } from './services/denuncia-documentos.servic
     TemplateService,
     DatosNotificacionService,
     DenunciaDocumentosService,
+    DenunciadoDenunciaService,
   ],
   controllers: [DenunciasController],
 })
