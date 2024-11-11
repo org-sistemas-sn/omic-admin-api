@@ -20,4 +20,10 @@ export class DenunciadosService {
       await this.denunciadoRepo.save(newDenounced);
     }
   }
+
+  async create(denounced: CreateDenouncedDto) {
+    const newDenounced = this.denunciadoRepo.create(denounced);
+    // newDenounced.denuncia = complaint;
+    return await this.denunciadoRepo.save(newDenounced);
+  }
 }

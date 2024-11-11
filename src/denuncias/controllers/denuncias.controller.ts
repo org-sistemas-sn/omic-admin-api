@@ -134,4 +134,14 @@ export class DenunciasController {
   revert(@Body() payload: any) {
     return this.denunciaService.revert(payload);
   }
+
+  @Post('/send-emails')
+  sendDenunciandosMails(@Body() payload: any) {
+    return this.denunciaService.sendDenunciandosMails(payload);
+  }
+
+  @Post('/add-denounced')
+  addDenunciando(@Body() payload: any) {
+    return this.denunciaService.addDenunciando(payload);
+  }
 }
