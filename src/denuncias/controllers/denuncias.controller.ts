@@ -141,7 +141,7 @@ export class DenunciasController {
   }
 
   @Post('/add-denounced')
-  addDenunciando(@Body() payload: any) {
-    return this.denunciaService.addDenunciando(payload);
+  addDenunciado(@Body() payload: any) {
+    return this.denunciaService.addDenunciado(payload);
   }
 }
