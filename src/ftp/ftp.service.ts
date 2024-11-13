@@ -63,9 +63,9 @@ export class FtpService {
       await this._ftpClient.access(this._options);
       console.log('Conexión exitosa - fileUpload');
 
-      return await this._ftpClient.uploadFrom(source, toRemotePath, options);
+      await this._ftpClient.uploadFrom(source, toRemotePath, options);
 
-      // return this._ftpClient.close();
+      return this._ftpClient.close();
     } catch (err) {
       this._ftpClient.close();
       throw err;
@@ -109,7 +109,7 @@ export class FtpService {
       // Ahora puedes utilizar el buffer o convertirlo en un blob si lo necesitas
       // Ejemplo de conversión a Blob en un entorno de navegador:
       // const blob = new Blob([buffer]);
-      // this._ftpClient.close();
+      this._ftpClient.close();
 
       return buffer;
     } catch (err) {

@@ -180,6 +180,53 @@ export class DenunciasService {
     return this.denunciaRepo.save(complaint);
   }
 
+  private dtoInfo({
+    denuncia,
+
+    nro_expediente,
+
+    denunciante_email,
+    meet_link,
+
+    time_link,
+    date_link,
+  }) {
+    const dia = new Date().getDate();
+    const mes = new Date().toLocaleString('es-AR', { month: 'long' });
+    const año = new Date().getFullYear();
+    const [year_meet, month_meet, day_meet] = date_link.split('-');
+    const weekday_meet = WeekDays[new Date(date_link).getDay()];
+
+    return {
+      nro_expediente,
+      dia,
+      mes,
+      año,
+      denunciante: `${denuncia.denunciante.apellido} ${denuncia.denunciante.nombre}`,
+
+      denunciado: denuncia.denunciadoDenuncia.reduce((prev, current) => {
+        if (prev) {
+          return prev + `, ${current.denunciado.nombre}`;
+        } else {
+          return current.denunciado.nombre;
+        }
+      }, ''),
+      direccion_denunciante: denuncia.denunciante.denuncia,
+      localidad_denunciante: denuncia.denunciante.localidad,
+      cod_postal_denunciante: denuncia.denunciante.codPostal,
+      provincia_denunciante: 'Buenos Aires',
+      tel_denunciante:
+        denuncia.denunciante.telefono || denuncia.denunciante.telefonoAlter,
+      email_denunciante: denunciante_email,
+
+      link_meet: meet_link,
+      year_meet,
+      month_meet,
+      day_meet,
+      weekday_meet,
+      hhmm_meet: time_link,
+    };
+  }
   async aprobbed(data) {
     const {
       id,
@@ -222,46 +269,16 @@ export class DenunciasService {
       denunciaEstado: denunciaEstado,
     });
 
-    const dia = new Date().getDate();
-    const mes = new Date().toLocaleString('es-AR', { month: 'long' });
-    const año = new Date().getFullYear();
-    const [year_meet, month_meet, day_meet] = date_link.split('-');
-    const weekday_meet = WeekDays[new Date(date_link).getDay()];
     // const nro_expediente = `${id}/${complaint.denunciante.apellido[0]}/${año}`;
 
-    const info = {
+    const info = this.dtoInfo({
+      denuncia,
       nro_expediente,
-      dia,
-      mes,
-      año,
-      denunciante: `${denuncia.denunciante.apellido} ${denuncia.denunciante.nombre}`,
-      // denunciado: `${complaint.denunciadoDenuncia[0].denunciado.nombre}${
-      //   complaint.denunciadoDenuncia?.length > 1 ? ' y otros.' : ''
-      // }`,
-      denunciado: denuncia.denunciadoDenuncia.reduce((prev, current) => {
-        if (prev) {
-          return prev + `, ${current.denunciado.nombre}`;
-        } else {
-          return current.denunciado.nombre;
-        }
-      }, ''),
-      direccion_denunciante: denuncia.denunciante.denuncia,
-      localidad_denunciante: denuncia.denunciante.localidad,
-      cod_postal_denunciante: denuncia.denunciante.codPostal,
-      provincia_denunciante: 'Buenos Aires',
-      tel_denunciante:
-        denuncia.denunciante.telefono || denuncia.denunciante.telefonoAlter,
-      email_denunciante: denunciante_email,
-      // email_denunciado: `${denunciados[0]}${
-      //   complaint.denunciadoDenuncia?.length > 1 ? ' y otros.' : ''
-      // }`,
-      link_meet: meet_link,
-      year_meet,
-      month_meet,
-      day_meet,
-      weekday_meet,
-      hhmm_meet: time_link,
-    };
+      denunciante_email,
+      meet_link,
+      time_link,
+      date_link,
+    });
 
     const denuncianteFiles = {
       message: `Su denuncia contra ${info.denunciado} fue`,
@@ -376,7 +393,7 @@ export class DenunciasService {
     const stream = Readable.from(file);
     const remotePath = ruta + `/${denuncianteFiles.filename}`;
 
-    this.ftpService.fileUpload(stream, remotePath);
+    await this.ftpService.fileUpload(stream, remotePath);
 
     files.push({
       file,
@@ -404,12 +421,19 @@ export class DenunciasService {
       //   files: files.map((e) => e.filename),
       // },
       {
-        email: 'braian.silva97@gmail.com',
+        email: 'joseilucci@gmail.com',
         bodyEmail: {
           message: `Documentos de la denuncia Expte: Nº ${nro_expediente}`,
         },
         files: files.map((e) => e.filename),
       },
+      // {
+      //   email: 'braian.silva97@gmail.com',
+      //   bodyEmail: {
+      //     message: `Documentos de la denuncia Expte: Nº ${nro_expediente}`,
+      //   },
+      //   files: files.map((e) => e.filename),
+      // },
     ];
 
     form.append('method', 'denuncia_omic');
@@ -589,9 +613,9 @@ export class DenunciasService {
     ];
 
     this.getArchivosAdjuntos(denuncia)
-      .then((archivos) => {
+      .then(async (archivos) => {
         for (const denunciado of denunciados) {
-          this.procesarDenunciado(
+          await this.procesarDenunciado(
             denunciado,
             info,
             files,
