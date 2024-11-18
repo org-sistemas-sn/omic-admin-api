@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 
 import { DenunciadoDenuncia } from './denuncia-denunciado.entity';
+import { DireccionesEnviadas } from './direcciones-enviadas.entity';
 // import { Empresa } from 'src/empresas/entities/empresa.entity';
 // import { Denuncia } from './denuncia.entity';
 
@@ -63,6 +64,8 @@ export class Denunciado {
   )
   denunciadoDenuncia: DenunciadoDenuncia[];
 
+  @OneToMany(() => DireccionesEnviadas, (e) => e.datosNotificacion)
+  direccionesEnviadas: DireccionesEnviadas[];
   // @ManyToOne(() => Empresa)
   // @JoinColumn({ name: 'empresa_id' })
   // empresa: Empresa;

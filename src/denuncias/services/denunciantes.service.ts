@@ -20,4 +20,14 @@ export class DenunciantesService {
     }
     return this.denuncianteRepo.save(informer);
   }
+
+  async findById(id: number) {
+    const e = this.denuncianteRepo.findOne({
+      where: {
+        id,
+      },
+    });
+
+    return e;
+  }
 }

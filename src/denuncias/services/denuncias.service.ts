@@ -25,6 +25,7 @@ import { DocumentosTiposService } from 'src/documentosTipo/services/documentosTi
 import { DenunciaDocumentosService } from './denuncia-documentos.service';
 import { WeekDays } from '../utils/constants';
 import { DenunciadoDenunciaService } from './denunciado-denuncia.service';
+import { DireccionesEnviadasService } from './direcciones-enviadas.service';
 
 @Injectable()
 export class DenunciasService {
@@ -42,6 +43,7 @@ export class DenunciasService {
     private documentosTiposService: DocumentosTiposService,
     private denunciaDocumentosService: DenunciaDocumentosService,
     private denunciadoDenunciaService: DenunciadoDenunciaService,
+    private direccionesEnviadasService: DireccionesEnviadasService,
   ) {}
 
   async create(data: CreateComplaintDto) {
@@ -128,7 +130,7 @@ export class DenunciasService {
 
   async findOne(id: number) {
     const relations = [
-      // 'estado',
+      'estado',
       'autorizado',
       'denunciante',
       'denunciadoDenuncia',
@@ -136,6 +138,10 @@ export class DenunciasService {
       // 'denunciados.empresa',
       // 'foja',
       // 'foja.archivos',
+      'datosNotificacion',
+      'datosNotificacion.direccionesEnviadas',
+      'datosNotificacion.direccionesEnviadas.denunciante',
+      'datosNotificacion.direccionesEnviadas.denunciado',
     ];
     const complaint = await this.denunciaRepo.findOne({
       where: { id },
@@ -211,7 +217,7 @@ export class DenunciasService {
           return current.denunciado.nombre;
         }
       }, ''),
-      direccion_denunciante: denuncia.denunciante.denuncia,
+      direccion_denunciante: denuncia.denunciante.domicilio,
       localidad_denunciante: denuncia.denunciante.localidad,
       cod_postal_denunciante: denuncia.denunciante.codPostal,
       provincia_denunciante: 'Buenos Aires',
@@ -231,12 +237,15 @@ export class DenunciasService {
     const {
       id,
       denunciante_email,
+      denunciante_postal,
       denunciados,
+      postales,
       meet_link,
       date_link,
       time_link,
       userId,
       nro_expediente,
+      envio_tipo,
     } = data;
 
     const relations = [
@@ -260,14 +269,40 @@ export class DenunciasService {
 
     const denunciaEstado = await this.denunciaEstadosService.create({
       denunciaId: id,
-      estadoId: estado,
+      estadoId: estado.id,
       usuarioId: userId,
     });
 
-    await this.datosNotificacionService.create({
+    const datosNotificacion = await this.datosNotificacionService.create({
       ...data,
+      denuncia,
       denunciaEstado: denunciaEstado,
     });
+
+    await this.direccionesEnviadasService.create({
+      datosNotificacionId: datosNotificacion.id,
+      denuncianteId: denuncia.denunciante.id,
+      email: denunciante_email,
+      codPostal: denunciante_postal,
+    });
+
+    for (const denunciado of denunciados) {
+      await this.direccionesEnviadasService.create({
+        datosNotificacionId: datosNotificacion.id,
+        denunciadoId: denunciado.id,
+        email: denunciado.email,
+        // codPostal: denunciado.codPostal,
+      });
+    }
+
+    for (const denunciado of postales) {
+      await this.direccionesEnviadasService.create({
+        datosNotificacionId: datosNotificacion.id,
+        denunciadoId: denunciado.id,
+        // email: denunciado.email,
+        codPostal: denunciado.codPostal,
+      });
+    }
 
     // const nro_expediente = `${id}/${complaint.denunciante.apellido[0]}/${año}`;
 
@@ -357,11 +392,14 @@ export class DenunciasService {
       denuncianteFiles.template,
     );
 
-    if (denunciante_email.email) {
+    if (
+      denunciante_email &&
+      (envio_tipo === 'email' || envio_tipo === 'ambos')
+    ) {
       const form = new FormData();
       const dataNot = [
         {
-          email: denunciante_email.email,
+          email: denunciante_email,
           bodyEmail: {
             message: denuncianteFiles.message,
           },
@@ -427,13 +465,13 @@ export class DenunciasService {
         },
         files: files.map((e) => e.filename),
       },
-      // {
-      //   email: 'braian.silva97@gmail.com',
-      //   bodyEmail: {
-      //     message: `Documentos de la denuncia Expte: Nº ${nro_expediente}`,
-      //   },
-      //   files: files.map((e) => e.filename),
-      // },
+      {
+        email: 'braian.silva97@gmail.com',
+        bodyEmail: {
+          message: `Documentos de la denuncia Expte: Nº ${nro_expediente}`,
+        },
+        files: files.map((e) => e.filename),
+      },
     ];
 
     form.append('method', 'denuncia_omic');
@@ -467,26 +505,27 @@ export class DenunciasService {
       'denunciadoDenuncia.denunciado',
     ];
 
-    const complaint = await this.denunciaRepo.findOne({
+    const denuncia = await this.denunciaRepo.findOne({
       where: { id },
       relations,
     });
 
-    if (!complaint) {
+    if (!denuncia) {
       throw new NotFoundException();
     }
     const estado = await this.estadosService.findByKey('RECHAZADO');
-    this.denunciaRepo.merge(complaint, { estado });
+    this.denunciaRepo.merge(denuncia, { estado });
 
     const denunciaEstado = await this.denunciaEstadosService.create({
       denunciaId: id,
-      estadoId: estado,
+      estadoId: estado.id,
       motivo,
       usuarioId: userId,
     });
 
     this.datosNotificacionService.create({
       ...data,
+      denuncia,
       denunciaEstado: denunciaEstado,
     });
 
@@ -497,7 +536,7 @@ export class DenunciasService {
           {
             email: denunciante_email,
             bodyEmail: {
-              message: `Su denuncia contra ${`${complaint.denunciadoDenuncia[0].denunciado.nombre}`} fue:`,
+              message: `Su denuncia contra ${`${denuncia.denunciadoDenuncia[0].denunciado.nombre}`} fue:`,
               motivo,
             },
           },
@@ -515,7 +554,7 @@ export class DenunciasService {
       );
     }
 
-    return this.denunciaRepo.save(complaint);
+    return this.denunciaRepo.save(denuncia);
   }
 
   async revert(data) {
@@ -533,23 +572,17 @@ export class DenunciasService {
     }
 
     for (const e of complaint.denunciaDocumentos) {
-      await this.ftpService.remove(e.path);
-
       await this.denunciaDocumentosService.delete(e);
+      await this.ftpService.remove(e.path);
     }
 
     const estado = await this.estadosService.findByKey('RECIBIDA');
     this.denunciaRepo.merge(complaint, { estado });
 
-    const denunciaEstado = await this.denunciaEstadosService.create({
+    await this.denunciaEstadosService.create({
       denunciaId: id,
-      estadoId: estado,
+      estadoId: estado.id,
       usuarioId: userId,
-    });
-
-    await this.datosNotificacionService.create({
-      ...data,
-      denunciaEstado: denunciaEstado,
     });
 
     return this.denunciaRepo.save(complaint);
@@ -564,6 +597,8 @@ export class DenunciasService {
       date_link,
       time_link,
       nro_expediente,
+
+      envio_tipo,
     } = data;
 
     const denuncia = await this.getDenuncia(id);
@@ -612,22 +647,36 @@ export class DenunciasService {
       },
     ];
 
-    this.getArchivosAdjuntos(denuncia)
-      .then(async (archivos) => {
-        for (const denunciado of denunciados) {
-          await this.procesarDenunciado(
-            denunciado,
-            info,
-            files,
-            archivos,
-            id,
-            denuncia,
-          );
-        }
-      })
-      .then(() => {
-        return this.ftpService.close();
-      });
+    if (envio_tipo === 'email' || envio_tipo === 'ambos') {
+      this.getArchivosAdjuntos(denuncia)
+        .then(async (archivos) => {
+          for (const denunciado of denunciados) {
+            await this.procesarDenunciado({
+              denunciado,
+              info,
+              files,
+              archivos,
+              id,
+              denuncia,
+              enviarMails: true,
+            });
+          }
+        })
+        .then(() => {
+          return this.ftpService.close();
+        });
+    } else {
+      for (const denunciado of denunciados) {
+        await this.procesarDenunciado({
+          denunciado,
+          info,
+          files,
+          id,
+          denuncia,
+          enviarMails: false,
+        });
+      }
+    }
 
     return { ok: true };
   }
@@ -698,14 +747,23 @@ export class DenunciasService {
     return archivos;
   }
 
-  private async procesarDenunciado(
+  private async procesarDenunciado({
     denunciado,
     info,
     files,
     archivos,
     id,
     denuncia,
-  ) {
+    enviarMails,
+  }: {
+    denunciado: any;
+    info: any;
+    files: any;
+    archivos?: any;
+    id: any;
+    denuncia: any;
+    enviarMails: boolean;
+  }) {
     console.log('procesarDenunciado');
 
     const denunciadosFiles = {
@@ -723,7 +781,6 @@ export class DenunciasService {
         },
         denunciadosFiles.template,
       );
-      console.log('denunciado.email', denunciado.email);
       await this.uploadFileToFTP(file, id, denunciadosFiles.filename);
       await this.saveDocumentRecord(
         denuncia.id,
@@ -732,7 +789,8 @@ export class DenunciasService {
         `${this._dir}/${id}/${denunciadosFiles.filename}`,
       );
 
-      if (denunciado.email) {
+      if (denunciado.email && enviarMails) {
+        console.log('denunciado.email', denunciado.email);
         await this.sendNotification(
           denunciado,
           files,
@@ -843,6 +901,8 @@ export class DenunciasService {
       telefono,
       telefonoAlter,
       email,
+
+      enviar_mail
     } = data;
 
     const denuncia = await this.getDenuncia(id);
@@ -913,7 +973,7 @@ export class DenunciasService {
         file: denunciaFile,
       },
     ];
-    console.log(denunciaFile);
+
     //
     // DENUNCIADOS
     const archivos = [];
@@ -941,7 +1001,7 @@ export class DenunciasService {
         denunciadosFiles.template,
       );
 
-      if (denunciado.email) {
+      if (denunciado.email && enviar_mail) {
         const form = new FormData();
         const dataNot = [
           {
