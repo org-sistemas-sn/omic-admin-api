@@ -19,6 +19,8 @@ import { Autorizado } from './autorizado.entity';
 import { Archivo } from './archivo.entity';
 import { DenunciaEstados } from './denuncia-estado.entity';
 import { DenunciaDocumentos } from './denuncia-documento.entity';
+import { DatosNotificacion } from './datos-notificacion.entity';
+// import { Causa } from 'src/causas/entities/causa.entity';
 
 export enum estadoGeneral {
   abierto = 'ABIERTO',
@@ -91,6 +93,9 @@ export class Denuncia {
 
   @OneToMany(() => Archivo, (archivo) => archivo.denuncia)
   archivos: Archivo[];
+
+  @OneToMany(() => DatosNotificacion, (e) => e.denuncia)
+  datosNotificacion: DatosNotificacion[];
 
   // @OneToOne(() => Foja, (foja) => foja.denuncia)
   // foja: Foja;

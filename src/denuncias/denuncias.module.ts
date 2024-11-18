@@ -25,6 +25,8 @@ import { DatosNotificacionService } from './services/datos-notificacion.service'
 import { DocumentosTipoModule } from 'src/documentosTipo/documentosTipos.module';
 import { DenunciaDocumentosService } from './services/denuncia-documentos.service';
 import { DenunciadoDenunciaService } from './services/denunciado-denuncia.service';
+import { DireccionesEnviadas } from './entities/direcciones-enviadas.entity';
+import { DireccionesEnviadasService } from './services/direcciones-enviadas.service';
 
 @Module({
   imports: [
@@ -39,6 +41,7 @@ import { DenunciadoDenunciaService } from './services/denunciado-denuncia.servic
       DenunciaEstados,
       DenunciaDocumentos,
       DatosNotificacion,
+      DireccionesEnviadas,
     ]),
     FojasModule,
     DocumentosTipoModule,
@@ -55,6 +58,8 @@ import { DenunciadoDenunciaService } from './services/denunciado-denuncia.servic
     DatosNotificacionService,
     DenunciaDocumentosService,
     DenunciadoDenunciaService,
+    DatosNotificacionService,
+    DireccionesEnviadasService,
   ],
   controllers: [DenunciasController],
 })

@@ -22,6 +22,7 @@ import { FojasService } from '../../fojas/services/fojas.service';
 import { ArchivosService } from '../../fojas/services/archivos.service';
 import { FilterComplaintDto } from '../dtos/filter.dto';
 import { EstadosService } from '../services/estados.service';
+import { DenunciaEstadosService } from '../services/denuncia-estados.service';
 
 @ApiTags('Denuncias')
 @Controller('denuncias')
@@ -31,6 +32,7 @@ export class DenunciasController {
     private fojasService: FojasService,
     private archivosService: ArchivosService,
     private estadosService: EstadosService,
+    private denunciaEstadosService: DenunciaEstadosService,
   ) {}
   @Post('')
   @UseInterceptors(
@@ -103,6 +105,11 @@ export class DenunciasController {
   @Get('/states')
   findStates() {
     return this.estadosService.findAll();
+  }
+
+  @Get('/last-approved')
+  lastApproved() {
+    return this.denunciaEstadosService.lastApproved();
   }
 
   @Get(':id')

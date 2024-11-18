@@ -26,4 +26,14 @@ export class DenunciadosService {
     // newDenounced.denuncia = complaint;
     return await this.denunciadoRepo.save(newDenounced);
   }
+
+  async findById(id: number) {
+    const e = this.denunciadoRepo.findOne({
+      where: {
+        id,
+      },
+    });
+
+    return e;
+  }
 }

@@ -6,10 +6,12 @@ import {
   UpdateDateColumn,
   OneToOne,
   JoinColumn,
+  OneToMany,
 } from 'typeorm';
 
 import { Autorizado } from './autorizado.entity';
 import { Denuncia } from './denuncia.entity';
+import { DireccionesEnviadas } from './direcciones-enviadas.entity';
 
 @Entity({ name: 'Denunciante' })
 export class Denunciante {
@@ -53,4 +55,7 @@ export class Denunciante {
 
   @OneToOne(() => Denuncia, (denuncia) => denuncia.denunciante)
   denuncia: Denuncia;
+
+  @OneToMany(() => DireccionesEnviadas, (e) => e.datosNotificacion)
+  direccionesEnviadas: DireccionesEnviadas[];
 }
