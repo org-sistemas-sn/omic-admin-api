@@ -11,8 +11,9 @@ import {
   Param,
   Put,
   ParseIntPipe,
+  UploadedFile,
 } from '@nestjs/common';
-import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags } from '@nestjs/swagger';
 
 import { ParseFormDataJsonPipe } from 'src/common/parse-formdata-json.pipe';
@@ -150,5 +151,16 @@ export class DenunciasController {
   @Post('/add-denounced')
   addDenunciado(@Body() payload: any) {
     return this.denunciaService.addDenunciado(payload);
+  }
+
+  @Post('/upload-document')
+  @UseInterceptors(FileInterceptor('file'))
+  adjuntarDocumentacion(
+    @UploadedFile()
+    file,
+    @Body()
+    payload: any,
+  ) {
+    return this.denunciaService.adjuntarDocumentacion(payload, file);
   }
 }
