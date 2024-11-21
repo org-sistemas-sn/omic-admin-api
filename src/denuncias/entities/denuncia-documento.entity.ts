@@ -25,6 +25,9 @@ export class DenunciaDocumentos {
   @Column({ type: 'varchar', length: 255 })
   path: string;
 
+  @Column({ type: 'varchar', length: 255 })
+  documentName: string;
+
   @Column({ type: 'int', name: 'Id_documento_tipo' })
   documentoTipoId: number;
 

@@ -23,7 +23,7 @@ import axios from 'axios';
 import { DatosNotificacionService } from './datos-notificacion.service';
 import { DocumentosTiposService } from 'src/documentosTipo/services/documentosTipos.service';
 import { DenunciaDocumentosService } from './denuncia-documentos.service';
-import { WeekDays } from '../utils/constants';
+import { Months, WeekDays } from '../utils/constants';
 import { DenunciadoDenunciaService } from './denunciado-denuncia.service';
 import { DireccionesEnviadasService } from './direcciones-enviadas.service';
 
@@ -227,7 +227,7 @@ export class DenunciasService {
 
       link_meet: meet_link,
       year_meet,
-      month_meet,
+      month_meet: Months[month_meet],
       day_meet,
       weekday_meet,
       hhmm_meet: time_link,
@@ -902,7 +902,7 @@ export class DenunciasService {
       telefonoAlter,
       email,
 
-      enviar_mail
+      enviar_mail,
     } = data;
 
     const denuncia = await this.getDenuncia(id);
@@ -946,11 +946,13 @@ export class DenunciasService {
       cod_postal_denunciante: denuncia.denunciante.codPostal,
       provincia_denunciante: 'Buenos Aires',
       tel_denunciante:
-        denuncia.denunciante.telefono || denuncia.denunciante.telefonoAlter,
+        denuncia.denunciante.telefono ||
+        denuncia.denunciante.telefonoAlter ||
+        denuncia.denunciante.celular,
 
       link_meet: meet_link,
       year_meet,
-      month_meet,
+      month_meet: Months[month_meet],
       day_meet,
       weekday_meet,
       hhmm_meet: time_link,
@@ -1068,5 +1070,37 @@ export class DenunciasService {
     }
 
     return denunciado;
+  }
+
+  async adjuntarDocumentacion(data, file) {
+    const { id, name } = data;
+
+    const denuncia = await this.getDenuncia(id);
+
+    if (!denuncia) {
+      throw new NotFoundException();
+    }
+
+    const ruta = `${this._dir}/${id}`;
+    const stream = Readable.from(file.buffer);
+    const remotePath = ruta + `/${file.filename}`;
+
+    this.ftpService.fileUpload(stream, remotePath);
+
+    const documentoTipo = await this.documentosTiposService.findByKey(
+      'DOCUMENTO_AGREGADO',
+    );
+
+    await this.denunciaDocumentosService.create({
+      denunciaId: denuncia.id,
+      documentoTipoId: documentoTipo.id,
+      fileName: file.filename,
+      path: remotePath,
+      documentName: name,
+    });
+
+    return {
+      ok: true,
+    };
   }
 }
