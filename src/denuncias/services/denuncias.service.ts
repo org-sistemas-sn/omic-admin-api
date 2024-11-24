@@ -4,7 +4,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Equal, FindOptionsWhere, Like, Repository } from 'typeorm';
+import {
+  Equal,
+  FindOperator,
+  FindOptionsWhere,
+  Like,
+  Repository,
+} from 'typeorm';
 
 import { Denuncia } from '../entities/denuncia.entity';
 import { CreateComplaintDto } from '../dtos/denuncia.dto';
@@ -88,20 +94,79 @@ export class DenunciasService {
       if (params) {
         const where: FindOptionsWhere<Denuncia> = {};
         const { limit, offset } = params;
-        const { nombre, apellido, dni, email, estado, orden = 'DESC' } = params;
+        const {
+          denunciante,
+          dni,
+          email,
+          estado,
+          date,
+          orden = 'DESC',
+        } = params;
 
-        if (nombre && !apellido)
-          where.denunciante = { nombre: Like(`%${nombre}%`) };
-        if (apellido && !nombre)
-          where.denunciante = { apellido: Like(`%${apellido}%`) };
-        if (nombre && apellido)
-          where.denunciante = {
-            nombre: Like(`%${nombre}%`),
-            apellido: Like(`%${apellido}%`),
-          };
+        // if (nombre && !apellido)
+        //   where.denunciante = { nombre: Like(`%${nombre}%`) };
+        // if (apellido && !nombre)
+        //   where.denunciante = { apellido: Like(`%${apellido}%`) };
+        // if (nombre && apellido)
+        //   where.denunciante = {
+        //     nombre: Like(`%${nombre}%`),
+        //     apellido: Like(`%${apellido}%`),
+        //   };
+        if (date) {
+          where.fecha = new Date(date.replaceAll('-', '/'));
+        }
+
+        if (denunciante) {
+          const words = denunciante.trim().split(' ');
+          const denuncianteApellido = words.map((e) => {
+            let denuncianteWhere: {
+              apellido: FindOperator<string>;
+              dni?: FindOperator<string>;
+              email?: FindOperator<string>;
+            } = {
+              apellido: Like(`%${e}%`),
+            };
+            if (dni) {
+              denuncianteWhere = { ...denuncianteWhere, dni: Like(`%${dni}%`) };
+            }
+            if (email)
+              denuncianteWhere = {
+                ...denuncianteWhere,
+                email: Like(`%${email}%`),
+              };
+
+            return denuncianteWhere;
+          });
+          const denuncianteNombre = words.map((e) => {
+            let denuncianteWhere: {
+              nombre: FindOperator<string>;
+              dni?: FindOperator<string>;
+              email?: FindOperator<string>;
+            } = {
+              nombre: Like(`%${e}%`),
+            };
+            if (dni) {
+              denuncianteWhere = { ...denuncianteWhere, dni: Like(`%${dni}%`) };
+            }
+            if (email)
+              denuncianteWhere = {
+                ...denuncianteWhere,
+                email: Like(`%${email}%`),
+              };
+
+            return denuncianteWhere;
+          });
+
+          where.denunciante = [...denuncianteApellido, ...denuncianteNombre];
+          // {
+          // nombre: words.map((e) => Like(`%${e}%`)),
+          // apellido: words.map((e) => Like(`%${e}%`)),
+          // };
+        } else {
+          if (dni) where.denunciante = { dni: Like(`%${dni}%`) };
+          if (email) where.denunciante = { email: Like(`%${email}%`) };
+        }
         // if (fechaInicio) where.createdAt = Like(`%${fechaInicio}%`);
-        if (dni) where.denunciante = { dni: Like(`%${dni}%`) };
-        if (email) where.denunciante = { email: Like(`%${email}%`) };
         // if (estadoGeneral) where.estadoGeneral = estadoGeneral;
 
         if (estado) {
@@ -142,6 +207,8 @@ export class DenunciasService {
       'datosNotificacion.direccionesEnviadas',
       'datosNotificacion.direccionesEnviadas.denunciante',
       'datosNotificacion.direccionesEnviadas.denunciado',
+      'datosNotificacion.denunciaEstado',
+      'datosNotificacion.denunciaEstado.estado',
     ];
     const complaint = await this.denunciaRepo.findOne({
       where: { id },
@@ -433,11 +500,6 @@ export class DenunciasService {
 
     await this.ftpService.fileUpload(stream, remotePath);
 
-    files.push({
-      file,
-      filename: denuncianteFiles.filename,
-    });
-
     const documento = await this.documentosTiposService.findByKey(
       denuncianteFiles.key,
     );
@@ -448,6 +510,49 @@ export class DenunciasService {
       fileName: denuncianteFiles.filename,
       path: remotePath,
     });
+
+    const aperturaFile = await this.templateService.createDocx(
+      info,
+      'APERTURA_DE_INSTANCIA.docx',
+    );
+
+    const documentFiles = [
+      {
+        filename: apertura_filename,
+        file: apertura,
+      },
+      {
+        filename: `${id}_APERTURA_INSTANCIA_${Date.now()}.docx`,
+        file: aperturaFile,
+      },
+      {
+        file,
+        filename: denuncianteFiles.filename,
+      },
+    ];
+
+    for (const denunciado of denuncia.denunciadoDenuncia) {
+      const denunciadosFiles = {
+        message: 'La denuncia en su contra fue',
+        key: 'CEDULA_APERTURA_DENUNCIADO',
+        filename: `${id}_CEDULA_DENUNCIADO_${Date.now()}.docx`,
+        template: 'CEDULA_APERTURA_DENUNCIADO.docx',
+      };
+
+      const denunciadoFile = await this.templateService.createDocx(
+        {
+          ...info,
+          denunciado: denunciado.denunciado.nombre,
+          email_denunciado: denunciado.denunciado.email,
+        },
+        denunciadosFiles.template,
+      );
+
+      documentFiles.push({
+        file: denunciadoFile,
+        filename: denuncianteFiles.filename,
+      });
+    }
 
     const form = new FormData();
     const dataNot = [
@@ -463,14 +568,14 @@ export class DenunciasService {
         bodyEmail: {
           message: `Documentos de la denuncia Expte: Nº ${nro_expediente}`,
         },
-        files: files.map((e) => e.filename),
+        files: documentFiles.map((e) => e.filename),
       },
       {
         email: 'braian.silva97@gmail.com',
         bodyEmail: {
           message: `Documentos de la denuncia Expte: Nº ${nro_expediente}`,
         },
-        files: files.map((e) => e.filename),
+        files: documentFiles.map((e) => e.filename),
       },
     ];
 
@@ -478,7 +583,7 @@ export class DenunciasService {
     form.append('data', JSON.stringify({ data: dataNot }));
     form.append('hasFiles', 'true');
 
-    files.forEach((e) => {
+    documentFiles.forEach((e) => {
       form.append(e.filename, e.file, { filename: e.filename });
     });
 
@@ -601,7 +706,18 @@ export class DenunciasService {
       envio_tipo,
     } = data;
 
-    const denuncia = await this.getDenuncia(id);
+    const relations = [
+      'denunciante',
+      'archivos',
+      'denunciadoDenuncia',
+      'denunciadoDenuncia.denunciado',
+    ];
+
+    const denuncia = await this.denunciaRepo.findOne({
+      where: { id },
+      relations,
+    });
+
     const fechaActual = this.getFechaActual();
     const fechaReunion = this.parseFechaReunion(date_link);
     const info = this.buildInfo(
@@ -617,16 +733,17 @@ export class DenunciasService {
 
     const denunciaData = {
       ...denuncia,
-      denunciados: denunciados.map((e) => {
+      denunciados: denuncia.denunciadoDenuncia.map((e) => {
         return {
-          ...e,
-          dni: e.dniCuilCuit,
-          codpostal: e.codPostal,
-          tel: e.telefono,
-          telalt: e.telefonoAlter,
+          ...e.denunciado,
+          dni: e.denunciado.dniCuilCuit,
+          codpostal: e.denunciado.codPostal,
+          tel: e.denunciado.telefono,
+          telalt: e.denunciado.telefonoAlter,
         };
       }),
     };
+
     const denunciaFile = await this.templateService.createDocx(
       denunciaData,
       'DENUNCIA.docx',
@@ -699,7 +816,7 @@ export class DenunciasService {
 
   private buildInfo(
     denuncia,
-    denunciados,
+    denunciado,
     fechaActual,
     fechaReunion,
     meet_link,
@@ -711,7 +828,7 @@ export class DenunciasService {
       nro_expediente,
       ...fechaActual,
       denunciante: `${denuncia.denunciante.apellido} ${denuncia.denunciante.nombre}`,
-      denunciado: this.formatDenunciados(denuncia),
+      denunciado: denunciado ? denunciado : this.formatDenunciados(denuncia),
       direccion_denunciante: denuncia.denunciante.denuncia,
       localidad_denunciante: denuncia.denunciante.localidad,
       cod_postal_denunciante: denuncia.denunciante.codPostal,
@@ -901,11 +1018,23 @@ export class DenunciasService {
       telefono,
       telefonoAlter,
       email,
-
-      enviar_mail,
+      envio_tipo,
+      postales,
+      emails,
+      // enviar_mail,
     } = data;
 
-    const denuncia = await this.getDenuncia(id);
+    const relations = [
+      'archivos',
+      'denunciante',
+      'denunciadoDenuncia',
+      'denunciadoDenuncia.denunciado',
+    ];
+
+    const denuncia = await this.denunciaRepo.findOne({
+      where: { id },
+      relations,
+    });
 
     if (!denuncia) {
       throw new NotFoundException();
@@ -921,152 +1050,116 @@ export class DenunciasService {
       email,
     });
 
+    const datosNotificacion = await this.datosNotificacionService.create({
+      ...data,
+      denuncia,
+    });
+
     await this.denunciadoDenunciaService.create({
       denuncia,
       denunciado,
     });
 
-    const dia = new Date().getDate();
-    const mes = new Date().toLocaleString('es-AR', { month: 'long' });
-    const año = new Date().getFullYear();
-    const [year_meet, month_meet, day_meet] = date_link.split('-');
-    const weekday_meet = WeekDays[new Date(date_link).getDay()];
-    // const nro_expediente = `${id}/${complaint.denunciante.apellido[0]}/${año}`;
+    for (const e of emails) {
+      await this.direccionesEnviadasService.create({
+        datosNotificacionId: datosNotificacion.id,
+        denunciadoId: denunciado.id,
+        email: e.email,
+        // codPostal: denunciado.codPostal,
+      });
+    }
 
-    const info = {
-      nro_expediente: denuncia.nroExpediente,
-      dia,
-      mes,
-      año,
-      denunciante: `${denuncia.denunciante.apellido} ${denuncia.denunciante.nombre}`,
+    for (const e of postales) {
+      await this.direccionesEnviadasService.create({
+        datosNotificacionId: datosNotificacion.id,
+        denunciadoId: denunciado.id,
+        // email: denunciado.email,
+        codPostal: e.codPostal,
+      });
+    }
 
-      denunciado: nombre,
-      direccion_denunciante: denuncia.denunciante.denuncia,
-      localidad_denunciante: denuncia.denunciante.localidad,
-      cod_postal_denunciante: denuncia.denunciante.codPostal,
-      provincia_denunciante: 'Buenos Aires',
-      tel_denunciante:
-        denuncia.denunciante.telefono ||
-        denuncia.denunciante.telefonoAlter ||
-        denuncia.denunciante.celular,
+    const fechaActual = this.getFechaActual();
+    const fechaReunion = this.parseFechaReunion(date_link);
 
-      link_meet: meet_link,
-      year_meet,
-      month_meet: Months[month_meet],
-      day_meet,
-      weekday_meet,
-      hhmm_meet: time_link,
-    };
+    const denunciados = emails.map((e) => {
+      return {
+        ...denunciado,
+        email: e.email,
+      };
+    });
 
-    const denunciadosFiles = {
-      message: 'La denuncia en su contra fue',
-      key: 'CEDULA_APERTURA_DENUNCIADO',
-      filename: `${id}_CEDULA_DENUNCIADO_${Date.now()}.docx`,
-      template: 'CEDULA_APERTURA_DENUNCIADO.docx',
-    };
-
-    const denunciaFile = await this.templateService.createDocx(
+    const info = this.buildInfo(
       denuncia,
+      nombre,
+      fechaActual,
+      fechaReunion,
+      meet_link,
+      time_link,
+      denuncia.denunciante.email,
+      denuncia.nroExpediente,
+    );
+
+    const denunciaData = {
+      ...denuncia,
+      denunciados: denuncia.denunciadoDenuncia.map((e) => {
+        return {
+          ...e.denunciado,
+          dni: e.denunciado.dniCuilCuit,
+          codpostal: e.denunciado.codPostal,
+          tel: e.denunciado.telefono,
+          telalt: e.denunciado.telefonoAlter,
+        };
+      }),
+    };
+    const denunciaFile = await this.templateService.createDocx(
+      denunciaData,
       'DENUNCIA.docx',
     );
+    const aperturaFile = await this.templateService.createDocx(
+      info,
+      'APERTURA_DE_INSTANCIA.docx',
+    );
+
     const files = [
       {
         filename: `${id}_DENUNCIA_${Date.now()}.docx`,
         file: denunciaFile,
       },
+      {
+        filename: `${id}_APERTURA_INSTANCIA_${Date.now()}.docx`,
+        file: aperturaFile,
+      },
     ];
 
-    //
-    // DENUNCIADOS
-    const archivos = [];
-    for (const archivo of denuncia.archivos) {
-      const buffer = await this.ftpService.downloadFileAsBuffer(
-        archivo.descripcion,
-      );
-
-      const filename = archivo.descripcion.split('/omic/')[1];
-
-      archivos.push({
-        ...archivo,
-        buffer,
-        filename,
-      });
-    }
-
-    try {
-      const file: any = await this.templateService.createDocx(
-        {
-          ...info,
-          denunciado: denunciado.nombre,
-          email_denunciado: denunciado.email,
-        },
-        denunciadosFiles.template,
-      );
-
-      if (denunciado.email && enviar_mail) {
-        const form = new FormData();
-        const dataNot = [
-          {
-            email: denunciado.email,
-            bodyEmail: {
-              message: denunciadosFiles.message,
-            },
-            files: [denunciadosFiles.filename],
-          },
-        ];
-
-        for (const archivo of archivos) {
-          if (archivo.buffer && archivo.filename) {
-            dataNot[0].files.push(archivo.filename);
-
-            form.append(archivo.filename, archivo.buffer, {
-              filename: archivo.filename,
+    if (envio_tipo === 'email' || envio_tipo === 'ambos') {
+      this.getArchivosAdjuntos(denuncia)
+        .then(async (archivos) => {
+          for (const denunciado of denunciados) {
+            await this.procesarDenunciado({
+              denunciado,
+              info,
+              files,
+              archivos,
+              id,
+              denuncia,
+              enviarMails: true,
             });
           }
-        }
-        form.append('method', 'denuncia_aprobada');
-        form.append('data', JSON.stringify({ data: dataNot }));
-        form.append('hasFiles', 'true');
-
-        form.append(denunciadosFiles.filename, file, {
-          filename: denunciadosFiles.filename,
+        })
+        .then(() => {
+          return this.ftpService.close();
         });
-
-        console.log(dataNot);
-        axios.post(
-          'https://notificaciones-8abd2b855cde.herokuapp.com/api/notifications',
-          form,
-          {
-            headers: {
-              'api-key': 'fJfCznx805geZEjuvAU533raN4HNh4WB',
-            },
-          },
-        );
+    } else {
+      for (const denunciado of denunciados) {
+        await this.procesarDenunciado({
+          denunciado,
+          info,
+          files,
+          id,
+          denuncia,
+          enviarMails: false,
+        });
       }
-
-      const ruta = `${this._dir}/${id}`;
-      const stream = Readable.from(file);
-      const remotePath = ruta + `/${denunciadosFiles.filename}`;
-
-      this.ftpService.fileUpload(stream, remotePath);
-
-      files.push({
-        file,
-        filename: denunciadosFiles.filename,
-      });
-
-      const documentoTipo = await this.documentosTiposService.findByKey(
-        denunciadosFiles.key,
-      );
-
-      await this.denunciaDocumentosService.create({
-        denunciaId: denuncia.id,
-        documentoTipoId: documentoTipo.id,
-        fileName: denunciadosFiles.filename,
-        path: remotePath,
-      });
-    } catch (err) {
-      console.log(err);
     }
 
     return denunciado;
@@ -1083,7 +1176,7 @@ export class DenunciasService {
 
     const ruta = `${this._dir}/${id}`;
     const stream = Readable.from(file.buffer);
-    const remotePath = ruta + `/${file.filename}`;
+    const remotePath = ruta + `/${file.originalname}`;
 
     this.ftpService.fileUpload(stream, remotePath);
 
@@ -1094,7 +1187,7 @@ export class DenunciasService {
     await this.denunciaDocumentosService.create({
       denunciaId: denuncia.id,
       documentoTipoId: documentoTipo.id,
-      fileName: file.filename,
+      fileName: file.originalname,
       path: remotePath,
       documentName: name,
     });
