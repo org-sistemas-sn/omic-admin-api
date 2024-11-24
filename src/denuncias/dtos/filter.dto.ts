@@ -23,6 +23,11 @@ export class FilterComplaintDto {
   @ApiPropertyOptional()
   @IsString()
   @IsOptional()
+  readonly denunciante: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
   readonly nombre: string;
 
   @ApiPropertyOptional()
@@ -63,4 +68,14 @@ export class FilterComplaintDto {
   @ApiPropertyOptional()
   @IsOptional()
   readonly orden: any;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  readonly date: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  readonly movement: string;
 }
