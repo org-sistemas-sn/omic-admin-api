@@ -556,13 +556,13 @@ export class DenunciasService {
 
     const form = new FormData();
     const dataNot = [
-      // {
-      //   email: 'omicsannicolas@sannicolas.gob.ar',
-      //   bodyEmail: {
-      //     message: `Documentos de la denuncia Expte: Nº ${info.nro_expediente}`,
-      //   },
-      //   files: files.map((e) => e.filename),
-      // },
+      {
+        email: 'omicsannicolas@sannicolas.gob.ar',
+        bodyEmail: {
+          message: `Documentos de la denuncia Expte: Nº ${info.nro_expediente}`,
+        },
+        files: files.map((e) => e.filename),
+      },
       {
         email: 'joseilucci@gmail.com',
         bodyEmail: {
@@ -570,13 +570,13 @@ export class DenunciasService {
         },
         files: documentFiles.map((e) => e.filename),
       },
-      {
-        email: 'braian.silva97@gmail.com',
-        bodyEmail: {
-          message: `Documentos de la denuncia Expte: Nº ${nro_expediente}`,
-        },
-        files: documentFiles.map((e) => e.filename),
-      },
+      // {
+      //   email: 'braian.silva97@gmail.com',
+      //   bodyEmail: {
+      //     message: `Documentos de la denuncia Expte: Nº ${nro_expediente}`,
+      //   },
+      //   files: documentFiles.map((e) => e.filename),
+      // },
     ];
 
     form.append('method', 'denuncia_omic');
