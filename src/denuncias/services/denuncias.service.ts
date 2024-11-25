@@ -933,7 +933,7 @@ export class DenunciasService {
       {
         email: denunciado.email,
         bodyEmail: { message: denunciadosFiles.message },
-        files: files.map((f) => f.filename),
+        files: [...files.map((f) => f.filename), denunciadosFiles.filename],
       },
     ];
 
