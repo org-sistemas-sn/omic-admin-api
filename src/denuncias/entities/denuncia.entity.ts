@@ -20,6 +20,8 @@ import { Archivo } from './archivo.entity';
 import { DenunciaEstados } from './denuncia-estado.entity';
 import { DenunciaDocumentos } from './denuncia-documento.entity';
 import { DatosNotificacion } from './datos-notificacion.entity';
+import { Movimiento } from 'src/movimientos/entities/movimiento.entity';
+import { Causa } from 'src/causas/entities/causa.entity';
 // import { Causa } from 'src/causas/entities/causa.entity';
 
 export enum estadoGeneral {
@@ -97,9 +99,19 @@ export class Denuncia {
   @OneToMany(() => DatosNotificacion, (e) => e.denuncia)
   datosNotificacion: DatosNotificacion[];
 
+  @OneToMany(() => DatosNotificacion, (e) => e.denuncia)
+  movimiento: Movimiento[];
+
   // @OneToOne(() => Foja, (foja) => foja.denuncia)
   // foja: Foja;
 
-  // @OneToOne(() => Causa, (causa) => causa.denunciaId)
-  // causa: Causa;
+  @OneToOne(() => Causa, (causa) => causa.denuncia)
+  causa: Causa;
+
+  @CreateDateColumn({
+    name: 'Ult_Movimiento',
+    type: 'timestamp',
+    default: () => 'CURRENT_TIMESTAMP(6)',
+  })
+  ultMovimiento: Date;
 }

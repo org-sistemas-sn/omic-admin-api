@@ -1,4 +1,6 @@
 import {
+  forwardRef,
+  Inject,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -32,6 +34,8 @@ import { DenunciaDocumentosService } from './denuncia-documentos.service';
 import { Months, WeekDays } from '../utils/constants';
 import { DenunciadoDenunciaService } from './denunciado-denuncia.service';
 import { DireccionesEnviadasService } from './direcciones-enviadas.service';
+import { MovimientoService } from 'src/movimientos/services/movimientos.service';
+import { CausasService } from 'src/causas/services/causa.service';
 
 @Injectable()
 export class DenunciasService {
@@ -50,6 +54,9 @@ export class DenunciasService {
     private denunciaDocumentosService: DenunciaDocumentosService,
     private denunciadoDenunciaService: DenunciadoDenunciaService,
     private direccionesEnviadasService: DireccionesEnviadasService,
+    private movimientoService: MovimientoService,
+    @Inject(forwardRef(() => CausasService))
+    private causasService: CausasService,
   ) {}
 
   async create(data: CreateComplaintDto) {
@@ -75,20 +82,20 @@ export class DenunciasService {
     }
   }
 
-  async findAll(params?: FilterComplaintDto) {
+  async findDenuncias(params?: FilterComplaintDto) {
     try {
       const relations = [
         'estado',
         'autorizado',
         'denunciante',
-        'archivos',
         'denunciadoDenuncia',
         'denunciadoDenuncia.denunciado',
         // 'denunciados.empresa',
         // 'foja',
         // 'foja.archivos',
-        'denunciaDocumentos',
-        'denunciaDocumentos.documentoTipo',
+        // 'archivos',
+        // 'denunciaDocumentos',
+        // 'denunciaDocumentos.documentoTipo',
         'denunciaEstados',
       ];
       if (params) {
@@ -100,6 +107,7 @@ export class DenunciasService {
           email,
           estado,
           date,
+          ultMovimiento,
           orden = 'DESC',
         } = params;
 
@@ -114,6 +122,9 @@ export class DenunciasService {
         //   };
         if (date) {
           where.fecha = new Date(date.replaceAll('-', '/'));
+        }
+        if (ultMovimiento) {
+          where.ultMovimiento = new Date(ultMovimiento.replaceAll('-', '/'));
         }
 
         if (denunciante) {
@@ -209,6 +220,8 @@ export class DenunciasService {
       'datosNotificacion.direccionesEnviadas.denunciado',
       'datosNotificacion.denunciaEstado',
       'datosNotificacion.denunciaEstado.estado',
+      // 'archivos',
+      // 'denunciaDocumentos',
     ];
     const complaint = await this.denunciaRepo.findOne({
       where: { id },
@@ -597,6 +610,17 @@ export class DenunciasService {
       },
     );
 
+    await this.movimientoService.create({
+      denuncia,
+      tabla_afectada: 'Denuncia_Estados',
+      entidad_id: denunciaEstado.denunciaEstadosId,
+      tipo_cambio: 'CREATE',
+      descripcion: 'Aprobar denuncia.',
+      valor_nuevo: estado.descripcion,
+      usuarioId: userId,
+    });
+
+    denuncia.ultMovimiento = new Date();
     denuncia.nroExpediente = nro_expediente;
     return this.denunciaRepo.save(denuncia);
   }
@@ -659,6 +683,19 @@ export class DenunciasService {
       );
     }
 
+    await this.movimientoService.create({
+      denuncia,
+      tabla_afectada: 'Denuncia_Estados',
+      entidad_id: denunciaEstado.denunciaEstadosId,
+      tipo_cambio: 'CREATE',
+      descripcion: 'Rechazar denuncia.',
+      valor_nuevo: estado.descripcion,
+      usuarioId: userId,
+    });
+
+    denuncia.ultMovimiento = new Date();
+    await this.denunciaRepo.save(denuncia);
+
     return this.denunciaRepo.save(denuncia);
   }
 
@@ -667,30 +704,49 @@ export class DenunciasService {
 
     const relations = ['denunciante', 'denunciaDocumentos'];
 
-    const complaint = await this.denunciaRepo.findOne({
+    const denuncia = await this.denunciaRepo.findOne({
       where: { id },
       relations,
     });
 
-    if (!complaint) {
+    if (!denuncia) {
       throw new NotFoundException();
     }
 
-    for (const e of complaint.denunciaDocumentos) {
+    for (const e of denuncia.denunciaDocumentos) {
       await this.denunciaDocumentosService.delete(e);
       await this.ftpService.remove(e.path);
     }
 
     const estado = await this.estadosService.findByKey('RECIBIDA');
-    this.denunciaRepo.merge(complaint, { estado });
+    this.denunciaRepo.merge(denuncia, { estado });
 
-    await this.denunciaEstadosService.create({
+    const nuevoEstado = await this.denunciaEstadosService.create({
       denunciaId: id,
       estadoId: estado.id,
       usuarioId: userId,
     });
 
-    return this.denunciaRepo.save(complaint);
+    await this.movimientoService.create({
+      denuncia,
+      tabla_afectada: 'Denuncia_Estados',
+      entidad_id: nuevoEstado.denunciaEstadosId,
+      tipo_cambio: 'CREATE',
+      descripcion: 'Revertir estado de la denuncia.',
+      valor_nuevo: estado.descripcion,
+      usuarioId: userId,
+    });
+
+    denuncia.ultMovimiento = new Date();
+
+    await this.denunciaRepo.save(denuncia);
+
+    await this.causasService.create({
+      anioCausa: new Date().getFullYear(),
+      denunciaId: denuncia.id,
+    });
+
+    return this.denunciaRepo.save(denuncia);
   }
 
   async sendDenunciandosMails(data) {
@@ -1162,11 +1218,23 @@ export class DenunciasService {
       }
     }
 
+    await this.movimientoService.create({
+      denuncia,
+      tabla_afectada: 'Denunciado',
+      entidad_id: denunciado.id,
+      tipo_cambio: 'CREATE',
+      descripcion: 'Denunciado agregado.',
+      valor_nuevo: nombre,
+      usuarioId: userId,
+    });
+    denuncia.ultMovimiento = new Date();
+    await this.denunciaRepo.save(denuncia);
+
     return denunciado;
   }
 
   async adjuntarDocumentacion(data, file) {
-    const { id, name } = data;
+    const { id, name, userId } = data;
 
     const denuncia = await this.getDenuncia(id);
 
@@ -1184,7 +1252,7 @@ export class DenunciasService {
       'DOCUMENTO_AGREGADO',
     );
 
-    await this.denunciaDocumentosService.create({
+    const document = await this.denunciaDocumentosService.create({
       denunciaId: denuncia.id,
       documentoTipoId: documentoTipo.id,
       fileName: file.originalname,
@@ -1192,8 +1260,100 @@ export class DenunciasService {
       documentName: name,
     });
 
+    await this.movimientoService.create({
+      denuncia,
+      tabla_afectada: 'Denuncia_Documentos',
+      entidad_id: document.denunciadoDenunciaId,
+      tipo_cambio: 'CREATE',
+      descripcion: 'Documento agregado.',
+      valor_nuevo: `${documentoTipo.descripcion} - ${file.originalname}`,
+      usuarioId: userId,
+    });
+    denuncia.ultMovimiento = new Date();
+    await this.denunciaRepo.save(denuncia);
+
     return {
       ok: true,
     };
+  }
+
+  async denunciaArchivos(id: number) {
+    const relations = ['archivos'];
+    const complaint = await this.denunciaRepo.findOne({
+      where: { id },
+      relations,
+    });
+    if (!complaint) {
+      throw new NotFoundException();
+    }
+    return complaint;
+  }
+
+  async denunciaDocumentos(id: number) {
+    const relations = [
+      'denunciaDocumentos',
+      'denunciaDocumentos.documentoTipo',
+    ];
+    const complaint = await this.denunciaRepo.findOne({
+      where: { id },
+      relations,
+    });
+    if (!complaint) {
+      throw new NotFoundException();
+    }
+    return complaint;
+  }
+
+  async findAll({ estado }) {
+    const where: FindOptionsWhere<Denuncia> = {};
+
+    if (estado) {
+      where.estado = Equal(estado);
+    }
+    const relations = ['estado'];
+
+    return this.denunciaRepo.find({ where, relations });
+  }
+
+  async cargarMovimientos() {
+    const relations = ['estado'];
+
+    const denuncias = await this.denunciaRepo.find({ relations });
+
+    const promises = denuncias.map(async (denuncia) => {
+      const denunciaEstado = await this.denunciaEstadosService.lastState({
+        denunciaId: denuncia.id,
+        estadoId: denuncia.estado.id,
+      });
+
+      if (denunciaEstado) {
+        const exist = await this.movimientoService.findOne({ denuncia });
+        if (!exist) {
+          await this.movimientoService.create({
+            denuncia,
+            tabla_afectada: 'Denuncia_Estados',
+            entidad_id: denunciaEstado?.denunciaEstadosId,
+            tipo_cambio: 'CREATE',
+            descripcion: 'Aprobar denuncia.',
+            valor_nuevo: denuncia.estado.descripcion,
+            createAt: denunciaEstado.createAt,
+          });
+
+          denuncia.ultMovimiento = new Date();
+          return await this.denunciaRepo.save(denuncia);
+        } else {
+          return;
+        }
+      } else {
+        if (denuncia.fecha) {
+          denuncia.ultMovimiento = denuncia.fecha;
+          return await this.denunciaRepo.save(denuncia);
+        } else {
+          return;
+        }
+      }
+    });
+
+    return await Promise.all(promises);
   }
 }

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { Denuncia } from './entities/denuncia.entity';
@@ -27,6 +27,9 @@ import { DenunciaDocumentosService } from './services/denuncia-documentos.servic
 import { DenunciadoDenunciaService } from './services/denunciado-denuncia.service';
 import { DireccionesEnviadas } from './entities/direcciones-enviadas.entity';
 import { DireccionesEnviadasService } from './services/direcciones-enviadas.service';
+import { MovimientoModule } from 'src/movimientos/movimientos.module';
+import { CausasModule } from 'src/causas/causas.module';
+import { CausasService } from 'src/causas/services/causa.service';
 
 @Module({
   imports: [
@@ -45,6 +48,8 @@ import { DireccionesEnviadasService } from './services/direcciones-enviadas.serv
     ]),
     FojasModule,
     DocumentosTipoModule,
+    MovimientoModule,
+    forwardRef(() => CausasModule),
   ],
   providers: [
     DenunciasService,
@@ -62,5 +67,6 @@ import { DireccionesEnviadasService } from './services/direcciones-enviadas.serv
     DireccionesEnviadasService,
   ],
   controllers: [DenunciasController],
+  exports: [DenunciasService],
 })
 export class DenunciasModule {}

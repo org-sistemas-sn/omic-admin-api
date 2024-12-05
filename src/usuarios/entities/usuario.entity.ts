@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 import { Exclude } from 'class-transformer';
 import { DenunciaEstados } from 'src/denuncias/entities/denuncia-estado.entity';
+import { Movimiento } from 'src/movimientos/entities/movimiento.entity';
 
 @Entity({ name: 'usuarios' })
 export class Usuario {
@@ -31,8 +32,11 @@ export class Usuario {
   @Column({ nullable: true, name: 'refresh_token' })
   refreshToken: string;
 
-  @OneToMany(() => DenunciaEstados, (denuncia) => denuncia.usuario)
+  @OneToMany(() => DenunciaEstados, (e) => e.usuario)
   denunciaEstados: DenunciaEstados[];
+
+  @OneToMany(() => Movimiento, (e) => e.usuario)
+  movimientos: Movimiento[];
 
   @CreateDateColumn({
     name: 'create_at',

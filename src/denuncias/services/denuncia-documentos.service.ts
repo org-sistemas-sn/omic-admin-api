@@ -11,10 +11,16 @@ export class DenunciaDocumentosService {
     private denunciaDocumentosRepo: Repository<DenunciaDocumentos>,
   ) {}
 
-  async create(data) {
+  async create(data: {
+    denunciaId: number;
+    documentoTipoId: number;
+    fileName: string;
+    path: string;
+    documentName?: string;
+  }) {
     const newDenounced = this.denunciaDocumentosRepo.create(data);
 
-    await this.denunciaDocumentosRepo.save(newDenounced);
+    return await this.denunciaDocumentosRepo.save(newDenounced);
   }
 
   async delete(denunciaDocumento: DenunciaDocumentos) {
