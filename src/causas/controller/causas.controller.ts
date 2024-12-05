@@ -35,6 +35,16 @@ export class CausasController {
     return this.causasService.createCauses();
   }
 
+  @Get('/archivos')
+  denunciaArchivos(@Param() param: any) {
+    return this.causasService.archivos(param.id);
+  }
+
+  @Get('/documentos')
+  denunciaDocumentos(@Param() param: any) {
+    return this.causasService.documentos(param.id);
+  }
+
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.causasService.findOne(id);
