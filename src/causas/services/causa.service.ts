@@ -170,11 +170,61 @@ export class CausasService {
   }
 
   async findOne(nroCausa: number) {
-    const record = await this.causasRepo.findOneBy({ nroCausa });
-    if (!record) {
+    const relations = [
+      'estado',
+      'autorizado',
+      'denunciante',
+      'denunciadoDenuncia',
+      'denunciadoDenuncia.denunciado',
+      // 'denunciados.empresa',
+      // 'foja',
+      // 'foja.archivos',
+      'datosNotificacion',
+      'datosNotificacion.direccionesEnviadas',
+      'datosNotificacion.direccionesEnviadas.denunciante',
+      'datosNotificacion.direccionesEnviadas.denunciado',
+      'datosNotificacion.denunciaEstado',
+      'datosNotificacion.denunciaEstado.estado',
+      // 'archivos',
+      // 'denunciaDocumentos',
+    ];
+    const cause = await this.causasRepo.findOne({
+      where: {
+        nroCausa,
+      },
+      relations,
+    });
+    if (!cause) {
       throw new NotFoundException();
     }
-    return record;
+    return cause;
+  }
+
+  async archivos(nroCausa: number) {
+    const relations = ['archivos'];
+    const cause = await this.causasRepo.findOne({
+      where: { nroCausa },
+      relations,
+    });
+    if (!cause) {
+      throw new NotFoundException();
+    }
+    return cause;
+  }
+
+  async documentos(nroCausa: number) {
+    const relations = [
+      'denunciaDocumentos',
+      'denunciaDocumentos.documentoTipo',
+    ];
+    const cause = await this.causasRepo.findOne({
+      where: { nroCausa },
+      relations,
+    });
+    if (!cause) {
+      throw new NotFoundException();
+    }
+    return cause;
   }
 
   async findAll() {
