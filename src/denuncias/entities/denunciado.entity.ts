@@ -1,13 +1,4 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-  ManyToOne,
-  JoinColumn,
-  OneToMany,
-} from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
 
 import { DenunciadoDenuncia } from './denuncia-denunciado.entity';
 import { DireccionesEnviadas } from './direcciones-enviadas.entity';

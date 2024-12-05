@@ -13,7 +13,10 @@ import {
   ParseIntPipe,
   UploadedFile,
 } from '@nestjs/common';
-import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
+import {
+  FileFieldsInterceptor,
+  FileInterceptor,
+} from '@nestjs/platform-express';
 import { ApiTags } from '@nestjs/swagger';
 
 import { ParseFormDataJsonPipe } from 'src/common/parse-formdata-json.pipe';
@@ -99,8 +102,8 @@ export class DenunciasController {
       },
     }),
   )
-  findAll(@Query() params: FilterComplaintDto) {
-    return this.denunciaService.findAll(params);
+  findDenuncias(@Query() params: FilterComplaintDto) {
+    return this.denunciaService.findDenuncias(params);
   }
 
   @Get('/states')
@@ -111,6 +114,21 @@ export class DenunciasController {
   @Get('/last-approved')
   lastApproved() {
     return this.denunciaEstadosService.lastApproved();
+  }
+
+  @Get('/archivos')
+  denunciaArchivos(@Param() param: any) {
+    return this.denunciaService.denunciaArchivos(param.id);
+  }
+
+  @Get('/documentos')
+  denunciaDocumentos(@Param() param: any) {
+    return this.denunciaService.denunciaDocumentos(param.id);
+  }
+
+  @Get('/cargar-movimientos')
+  cargarMovimientos() {
+    return this.denunciaService.cargarMovimientos();
   }
 
   @Get(':id')

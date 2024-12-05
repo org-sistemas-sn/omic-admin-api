@@ -24,6 +24,28 @@ export class DenunciaEstadosService {
     return await this.denunciaEstadosRepo.save(newDenounced);
   }
 
+  async lastState({
+    denunciaId,
+    estadoId,
+  }: {
+    denunciaId: number;
+    estadoId: number;
+  }) {
+    const relations = ['denuncia'];
+    const result = await this.denunciaEstadosRepo.findOne({
+      where: {
+        denunciaId,
+        estadoId,
+      },
+      order: {
+        createAt: 'DESC',
+      },
+      relations,
+    });
+
+    return result;
+  }
+
   async lastApproved() {
     const estado = await this.estadosService.findByKey('ACEPTADO');
 
