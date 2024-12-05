@@ -171,22 +171,18 @@ export class CausasService {
 
   async findOne(nroCausa: number) {
     const relations = [
-      'estado',
-      'autorizado',
-      'denunciante',
-      'denunciadoDenuncia',
-      'denunciadoDenuncia.denunciado',
-      // 'denunciados.empresa',
-      // 'foja',
-      // 'foja.archivos',
-      'datosNotificacion',
-      'datosNotificacion.direccionesEnviadas',
-      'datosNotificacion.direccionesEnviadas.denunciante',
-      'datosNotificacion.direccionesEnviadas.denunciado',
-      'datosNotificacion.denunciaEstado',
-      'datosNotificacion.denunciaEstado.estado',
-      // 'archivos',
-      // 'denunciaDocumentos',
+      'denuncia',
+      'denuncia.estado',
+      'denuncia.autorizado',
+      'denuncia.denunciante',
+      'denuncia.denunciadoDenuncia',
+      'denuncia.denunciadoDenuncia.denunciado',
+      'denuncia.datosNotificacion',
+      'denuncia.datosNotificacion.direccionesEnviadas',
+      'denuncia.datosNotificacion.direccionesEnviadas.denunciante',
+      'denuncia.datosNotificacion.direccionesEnviadas.denunciado',
+      'denuncia.datosNotificacion.denunciaEstado',
+      'denuncia.datosNotificacion.denunciaEstado.estado',
     ];
     const cause = await this.causasRepo.findOne({
       where: {
@@ -201,7 +197,7 @@ export class CausasService {
   }
 
   async archivos(nroCausa: number) {
-    const relations = ['archivos'];
+    const relations = ['denuncia', 'denuncia.archivos'];
     const cause = await this.causasRepo.findOne({
       where: { nroCausa },
       relations,
@@ -214,8 +210,9 @@ export class CausasService {
 
   async documentos(nroCausa: number) {
     const relations = [
-      'denunciaDocumentos',
-      'denunciaDocumentos.documentoTipo',
+      'denuncia',
+      'denuncia.denunciaDocumentos',
+      'denuncia.denunciaDocumentos.documentoTipo',
     ];
     const cause = await this.causasRepo.findOne({
       where: { nroCausa },
