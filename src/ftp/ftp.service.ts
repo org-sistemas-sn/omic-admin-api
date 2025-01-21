@@ -23,6 +23,7 @@ export class FtpService {
   async connect() {
     try {
       await this._ftpClient.access(this._options);
+      console.log('Conexión exitosa - fileUpload');
     } catch (error) {
       throw error;
     }
@@ -74,10 +75,23 @@ export class FtpService {
 
   async remove(toRemotePath: string) {
     try {
-      await this._ftpClient.access(this._options);
-      await this._ftpClient.remove(toRemotePath);
+      // Obtener la lista de archivos en el directorio
+      const dirPath =
+        toRemotePath.substring(0, toRemotePath.lastIndexOf('/')) || '.';
+      const fileName = toRemotePath.split('/').pop();
 
-      return this._ftpClient.close();
+      const fileList = await this._ftpClient.list(dirPath);
+
+      // Verificar si el archivo existe en la lista
+      const fileExists = fileList.some((file) => file.name === fileName);
+
+      if (fileExists) {
+        console.log(`El archivo "${fileName}" existe en el servidor.`);
+        return this._ftpClient.remove(toRemotePath);
+      } else {
+        console.log(`El archivo "${fileName}" NO existe en el servidor.`);
+        return;
+      }
     } catch (err) {
       this._ftpClient.close();
       throw err;

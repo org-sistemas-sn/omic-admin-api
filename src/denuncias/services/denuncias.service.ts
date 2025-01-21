@@ -620,6 +620,11 @@ export class DenunciasService {
       usuarioId: userId,
     });
 
+    await this.causasService.create({
+      anioCausa: new Date().getFullYear(),
+      denunciaId: denuncia.id,
+    });
+
     denuncia.ultMovimiento = new Date();
     denuncia.nroExpediente = nro_expediente;
     return this.denunciaRepo.save(denuncia);
@@ -713,13 +718,15 @@ export class DenunciasService {
       throw new NotFoundException();
     }
 
+    await this.ftpService.connect();
     for (const e of denuncia.denunciaDocumentos) {
-      await this.denunciaDocumentosService.delete(e);
       await this.ftpService.remove(e.path);
+      await this.denunciaDocumentosService.delete(e);
     }
+    this.ftpService.close();
 
     const estado = await this.estadosService.findByKey('RECIBIDA');
-    this.denunciaRepo.merge(denuncia, { estado });
+    // this.denunciaRepo.merge(denuncia, { estado });
 
     const nuevoEstado = await this.denunciaEstadosService.create({
       denunciaId: id,
@@ -738,13 +745,7 @@ export class DenunciasService {
     });
 
     denuncia.ultMovimiento = new Date();
-
-    await this.denunciaRepo.save(denuncia);
-
-    await this.causasService.create({
-      anioCausa: new Date().getFullYear(),
-      denunciaId: denuncia.id,
-    });
+    denuncia.estado = estado;
 
     return this.denunciaRepo.save(denuncia);
   }
@@ -1263,7 +1264,7 @@ export class DenunciasService {
     await this.movimientoService.create({
       denuncia,
       tabla_afectada: 'Denuncia_Documentos',
-      entidad_id: document.denunciadoDenunciaId,
+      entidad_id: document.denunciaDocumentosId,
       tipo_cambio: 'CREATE',
       descripcion: 'Documento agregado.',
       valor_nuevo: `${documentoTipo.descripcion} - ${file.originalname}`,
@@ -1355,5 +1356,41 @@ export class DenunciasService {
     });
 
     return await Promise.all(promises);
+  }
+
+  async changeState(data) {
+    const { id, estado, userId } = data;
+
+    const relations = ['denunciante', 'denunciaDocumentos'];
+
+    const denuncia = await this.denunciaRepo.findOne({
+      where: { id },
+      relations,
+    });
+
+    if (!denuncia) {
+      throw new NotFoundException();
+    }
+
+    const nuevoEstado = await this.denunciaEstadosService.create({
+      denunciaId: id,
+      estadoId: estado,
+      usuarioId: userId,
+    });
+
+    await this.movimientoService.create({
+      denuncia,
+      tabla_afectada: 'Denuncia_Estados',
+      entidad_id: nuevoEstado.denunciaEstadosId,
+      tipo_cambio: 'CREATE',
+      descripcion: 'Cambio de estado de la causa.',
+      valor_nuevo: estado.descripcion,
+      usuarioId: userId,
+    });
+
+    denuncia.estado = estado;
+    denuncia.ultMovimiento = new Date();
+
+    return this.denunciaRepo.save(denuncia);
   }
 }
