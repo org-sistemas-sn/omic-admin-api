@@ -24,6 +24,8 @@ export class DenunciaDocumentosService {
   }
 
   async delete(denunciaDocumento: DenunciaDocumentos) {
-    return this.denunciaDocumentosRepo.delete(denunciaDocumento);
+    return this.denunciaDocumentosRepo.delete({
+      denunciaDocumentosId: denunciaDocumento.denunciaDocumentosId,
+    });
   }
 }

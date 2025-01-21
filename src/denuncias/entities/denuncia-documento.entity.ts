@@ -14,7 +14,7 @@ import { DocumentosTipos } from 'src/documentosTipo/entities/documentosTipos.ent
 @Entity({ name: 'Denuncia_Documentos' })
 export class DenunciaDocumentos {
   @PrimaryGeneratedColumn({ name: 'Id_Denuncia_Documentos' })
-  denunciadoDenunciaId: number;
+  denunciaDocumentosId: number;
 
   @Column({ type: 'int', name: 'Id_Denuncia' })
   denunciaId: number;
