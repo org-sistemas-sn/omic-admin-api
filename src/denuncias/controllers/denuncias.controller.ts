@@ -136,6 +136,17 @@ export class DenunciasController {
     return this.denunciaService.findOne(param.id);
   }
 
+  @Put('/change-state')
+  @UseInterceptors(FileInterceptor('file'))
+  changeState(
+    @UploadedFile()
+    file,
+    @Body()
+    payload: any,
+  ) {
+    return this.denunciaService.changeState(payload, file);
+  }
+
   @Put(':id')
   update(@Param('id', ParseIntPipe) id: number, @Body() payload) {
     return this.denunciaService.update(id, payload);
