@@ -17,6 +17,12 @@ export class Estado {
   @Column({ type: 'varchar', length: 255 })
   key: string;
 
+  @Column({ type: 'int' })
+  nivel: number;
+
+  @Column({ type: 'int' })
+  parentId: number;
+
   @Column({ type: 'varchar', length: 255 })
   descripcion: string;
 
