@@ -1,1 +1,1 @@
-web: npm run start:prod
+web: npx puppeteer browsers install chrome && npm run start:prod
