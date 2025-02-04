@@ -13,7 +13,11 @@ export const generatePDF = async (info: any, tipo: string) => {
   }
 
   try {
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({
+      // executablePath:
+      //   process.env.CHROME_EXECUTABLE_PATH || '/usr/bin/google-chrome-stable',
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
     const page = await browser.newPage();
 
     // await page.setContent(htmlContent, { waitUntil: 'domcontentloaded' });
