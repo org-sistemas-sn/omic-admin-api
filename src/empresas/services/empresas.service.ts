@@ -14,8 +14,7 @@ import { CreateCompanyDto, UpdateCompanyDto } from '../dtos/empresa.dto';
 import { FilterCompanyDto } from '../dtos/filter.dto';
 
 const expectedHeadersFile = [
-  'f',
-  'empresa',
+  'razón social',
   'cuit',
   'correo electrónico',
   'teléfono',
@@ -55,11 +54,24 @@ export class EmpresasService {
   }
 
   async remove(id: number) {
-    const company = await this.empresaRepo.findOneBy({ id });
+    const company = await this.empresaRepo.findOne({ where: { id } });
+
     if (!company) {
-      throw new NotFoundException();
+      console.log('Empresa no encontrada');
+      throw new NotFoundException('Empresa no encontrada');
     }
-    return this.empresaRepo.update(id, { deletedAt: new Date() });
+
+    await this.empresaRepo.update(id, { deletedAt: new Date() });
+
+    const updatedCompany = await this.empresaRepo.findOne({ where: { id } });
+
+    return {
+      id: updatedCompany?.id,
+      nombre: updatedCompany?.nombre,
+      cuit: updatedCompany?.cuit,
+      deletedAt: updatedCompany?.deletedAt,
+      message: 'Empresa eliminada correctamente',
+    };
   }
 
   async findOne(id: number) {
@@ -118,14 +130,15 @@ export class EmpresasService {
 
   #validateHedersOrder(arr1: Array<string>, arr2: Array<string>) {
     if (arr1.length !== arr2.length) {
-      return false; // Si los arreglos tienen diferente longitud, no pueden tener el mismo orden
+      return false;
     }
+
     for (let i = 0; i < arr1.length; i++) {
       if (arr1[i] !== arr2[i]) {
-        return false; // Si algún elemento no coincide, los arreglos no tienen el mismo orden
+        return false;
       }
     }
-    return true; // Si llega hasta aquí, los arreglos tienen los mismos elementos en el mismo orden
+    return true;
   }
 
   #formatText(text) {
@@ -152,76 +165,79 @@ export class EmpresasService {
   }
 
   async bulkCreate(file: Express.Multer.File) {
-    let workbook = new ExcelJS.Workbook();
-    workbook = await workbook.xlsx.load(file.buffer);
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(file.buffer);
     const worksheet = workbook.worksheets[0];
-    // Validar maximo de filas
+
     if (worksheet.rowCount > 255) {
-      console.log(`Numero de filas ${worksheet.rowCount}`);
+      console.log(
+        `❌ Número de filas excede el límite permitido: ${worksheet.rowCount}`,
+      );
       throw new BadRequestException('El número máximo de filas es 255');
     }
-    // Validar encabezados
-    const headersData = [];
+
+    const headersData: string[] = [];
     const firstRow = worksheet.getRow(1);
-    // Iterar sobre cada celda en la fila
-    firstRow.eachCell({ includeEmpty: false }, function (cell) {
-      // Acceder al valor de la celda
+
+    firstRow.eachCell({ includeEmpty: false }, (cell) => {
       headersData.push(cell.value.toString().toLowerCase().trim());
     });
+
+    // Eliminar encabezado 'n°' si está presente en la primera columna
+    if (headersData[0] === 'n°') {
+      headersData.shift();
+    }
+
+    // Eliminar duplicados en los encabezados
+    const uniqueHeaders = [...new Set(headersData)];
+
     const missingFields = expectedHeadersFile.filter(
-      (field) => !headersData.includes(field),
+      (field) => !uniqueHeaders.includes(field),
     );
 
     if (missingFields.length) {
       const errors = missingFields.map((field) => `Falta la columna ${field}`);
       throw new BadRequestException(errors);
     }
-    // Validar orden de columnas
+
+    // Validar el orden de columnas
     const isOrdered = this.#validateHedersOrder(
       expectedHeadersFile,
-      headersData,
+      uniqueHeaders,
     );
     if (!isOrdered) {
       throw new BadRequestException('Las columnas no están ordenadas');
     }
+
     const dataRows = worksheet.getRows(2, worksheet.rowCount);
+    const promises = [];
 
     for (const row of dataRows) {
-      const empresa = row.getCell(2).text;
-      if (!empresa) break;
-      const cuit = row.getCell(3).text;
-      const email = row.getCell(4).text;
-      const telefono = row.getCell(5).text;
-      const nombreContacto = row.getCell(6).text;
-      const estado = row.getCell(7).text;
-      const seguimiento = row.getCell(8).text;
-      const fechaAdhesion = row.getCell(9).value;
-      const declaracionJurada = row.getCell(10).text;
-      const pvRegistro = row.getCell(11).text;
-      const isActive = true;
-      const cargaMasiva = new Date();
+      const empresa = row.getCell(2).text?.trim();
+      if (!empresa) continue;
 
       const data = {
         nombre: this.#formatText(empresa),
-        cuit: this.#formatText(cuit),
-        email: this.#formatText(email),
-        telefono: this.#formatText(telefono),
-        nombreContacto: this.#formatText(nombreContacto),
-        estado: estado ? estado.toString().toUpperCase() : 'ADHERIDO',
-        seguimiento: this.#formatText(seguimiento),
-        fechaAdhesion: this.#formatDate(fechaAdhesion),
-        declaracionJurada: this.#formatText(declaracionJurada),
-        pvRegistro: this.#formatText(pvRegistro),
-        isActive,
-        cargaMasiva,
+        cuit: this.#formatText(row.getCell(4).text),
+        email: this.#formatText(row.getCell(5).text),
+        telefono: this.#formatText(row.getCell(6).text),
+        nombreContacto: this.#formatText(row.getCell(7).text),
+        estado: row.getCell(8).text
+          ? row.getCell(8).text.toUpperCase()
+          : 'NO_ADHERIDO',
+        seguimiento: this.#formatText(row.getCell(9).text),
+        fechaAdhesion: this.#formatDate(row.getCell(10).value),
+        declaracionJurada: this.#formatText(row.getCell(11).text),
+        pvRegistro: this.#formatText(row.getCell(12).text),
+        isActive: true,
+        cargaMasiva: new Date(),
       };
 
-      await this.updateOrCreate(
-        this.#formatText(empresa),
-        this.#formatText(cuit),
-        data,
-      );
+      promises.push(this.updateOrCreate(data.nombre, data.cuit, data));
     }
+
+    await Promise.all(promises);
+
     return {
       message: 'Carga completada con éxito',
       error: null,
