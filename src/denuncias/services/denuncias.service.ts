@@ -1443,7 +1443,9 @@ export class DenunciasService {
         envio_tipo: tipoEnvio,
       });
 
-      if (tipoEnvio === 'email' || tipoEnvio === 'ambos') {
+      if (tipoEnvio === 'email') {
+        // Enviar correos electrónicos
+        console.log('📨 Modo de envío: SOLO EMAIL');
         const form = new FormData();
         const emailsToSend = [];
         const message =
@@ -1466,14 +1468,12 @@ export class DenunciasService {
           'DOCUMENTO_NOTIFICACION',
         );
 
-        console.log('📌 Registrando documento en la base de datos...');
         await this.denunciaDocumentosService.create({
-          denunciaId: denuncia.id,
+          denunciaId: id,
           documentoTipoId: documentoTipo.id,
           fileName,
           path: remotePath,
         });
-        console.log('✅ Documento registrado.');
 
         if (denunciante.email) {
           emailsToSend.push({
@@ -1527,27 +1527,124 @@ export class DenunciasService {
             error.response?.data || error.message,
           );
         }
-      }
+      } else if (tipoEnvio === 'postal') {
+        // Registrar solo direcciones postales
+        console.log('📦 Modo de envío: SOLO POSTAL');
 
-      if (tipoEnvio === 'postal' || tipoEnvio === 'ambos') {
+        await this.direccionesEnviadasService.create({
+          datosNotificacionId: datosNotificacion.id,
+          denuncianteId: denuncia.denunciante.id,
+          email: null, // En postal no se envían emails
+          codPostal: denunciante.codPostal,
+        });
+
+        await Promise.all(
+          postales.map(async (denunciado) => {
+            return this.direccionesEnviadasService.create({
+              datosNotificacionId: datosNotificacion.id,
+              denunciadoId: denunciado.id,
+              codPostal: denunciado.codPostal,
+            });
+          }),
+        );
+
+        console.log('✅ Direcciones postales registradas.');
+      } else if (tipoEnvio === 'ambos') {
+        // Procesar tanto email como postal
+        console.log('📦📨 Modo de envío: AMBOS (EMAIL y POSTAL)');
+
+        // 📌 Enviar correos
+        const form = new FormData();
+        const emailsToSend = [];
+        const message =
+          tipoCorreo === 'A'
+            ? 'Buenos días estimados, adjunto envío el acta de la audiencia celebrada en el marco del expediente de la referencia.'
+            : 'Buenos días estimados, adjunto envío Resolución de esta oficina en el marco del expediente de la referencia.';
+
+        await this.ftpService.connect();
+        const ruta = `${this._dir}/${id}`;
+        await this.ftpService.createDir(ruta);
+
+        const fileName = `${id}_cambio_estado_${estadoId}_${Date.now()}.pdf`;
+        const remotePath = `${ruta}/${fileName}`;
+
+        const streamFile = Readable.from(file.buffer);
+        await this.ftpService.fileUpload(streamFile, remotePath);
+        this.ftpService.close();
+
+        const documentoTipo = await this.documentosTiposService.findByKey(
+          'DOCUMENTO_NOTIFICACION',
+        );
+
+        await this.denunciaDocumentosService.create({
+          denunciaId: id,
+          documentoTipoId: documentoTipo.id,
+          fileName,
+          path: remotePath,
+        });
+
+        if (denunciante.email) {
+          emailsToSend.push({
+            email: denunciante.email,
+            bodyEmail: {
+              message: message,
+              expte: `Expte.: ${nroExpediente} Presunta Infracción Ley 24.240`,
+            },
+            files: [fileName],
+          });
+        }
+
+        denunciados.forEach((denunciado) => {
+          if (denunciado.email) {
+            emailsToSend.push({
+              email: denunciado.email,
+              bodyEmail: {
+                message: message,
+                expte: `Expte.: ${nroExpediente} Presunta Infracción Ley 24.240`,
+              },
+              files: [fileName],
+            });
+          }
+        });
+
+        console.log(
+          '📨 Enviando correos a:',
+          emailsToSend.map((e) => e.email),
+        );
+
+        form.append('method', 'denuncia_cambio_estado');
+        form.append('data', JSON.stringify({ data: emailsToSend }));
+        form.append('hasFiles', 'true');
+        form.append(fileName, file.buffer, { filename: fileName });
+
+        try {
+          const response = await axios.post(
+            'https://notificaciones-8abd2b855cde.herokuapp.com/api/notifications',
+            form,
+            {
+              headers: {
+                'api-key': 'fJfCznx805geZEjuvAU533raN4HNh4WB',
+              },
+            },
+          );
+
+          console.log('✅ Emails enviados correctamente:', response.data);
+        } catch (error) {
+          console.error(
+            '❌ Error enviando emails:',
+            error.response?.data || error.message,
+          );
+        }
+
+        // 📌 Registrar direcciones postales
         console.log('📦 Registrando direcciones postales...');
 
         await this.direccionesEnviadasService.create({
           datosNotificacionId: datosNotificacion.id,
           denuncianteId: denuncia.denunciante.id,
-          email: tipoEnvio === 'postal' ? null : denunciante.email,
+          email: denunciante.email,
           codPostal: denunciante.codPostal,
         });
-
-        await Promise.all(
-          denunciados.map(async (denunciado) => {
-            return this.direccionesEnviadasService.create({
-              datosNotificacionId: datosNotificacion.id,
-              denunciadoId: denunciado.id,
-              email: tipoEnvio === 'postal' ? null : denunciado.email,
-            });
-          }),
-        );
 
         await Promise.all(
           postales.map(async (denunciado) => {
