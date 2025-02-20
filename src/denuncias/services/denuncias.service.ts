@@ -422,10 +422,12 @@ export class DenunciasService {
     );
 
     // CREAR CARPETA
+    console.log('Conexion FtpService');
     await this.ftpService.connect();
     const ruta = `${this._dir}/${id}`;
     await this.ftpService.createDir(ruta);
     this.ftpService.close();
+    console.log('Carpeta creada');
 
     // GUARDAR CARATULA
     const streamFile = Readable.from(caratula);
@@ -1382,15 +1384,26 @@ export class DenunciasService {
   }
 
   async changeState(data, file) {
+    let parsedPayload;
+    try {
+      parsedPayload =
+        typeof data.payload === 'string' ? JSON.parse(data.payload) : data;
+    } catch (error) {
+      console.error('❌ Error al parsear payload:', error);
+      throw new Error('Formato de payload inválido.');
+    }
+
     const {
       id,
       estadoId,
       userId,
-      denunciante_email,
-      denunciante_postal,
+      denunciante,
+      nroExpediente,
+      tipoEnvio,
+      tipoCorreo,
       denunciados,
       postales,
-    } = data;
+    } = parsedPayload;
 
     const relations = ['denunciante', 'denunciaDocumentos'];
 
@@ -1400,9 +1413,9 @@ export class DenunciasService {
     });
 
     if (!denuncia) {
+      console.error('❌ Denuncia no encontrada:', id);
       throw new NotFoundException();
     }
-
     const estado = await this.estadosService.findOne(estadoId);
 
     const nuevoEstado = await this.denunciaEstadosService.create({
@@ -1411,50 +1424,163 @@ export class DenunciasService {
       usuarioId: userId,
     });
 
-    const datosNotificacion = await this.datosNotificacionService.create({
-      ...data,
-      denuncia,
-      denunciaEstado: nuevoEstado,
-    });
-
-    await this.direccionesEnviadasService.create({
-      datosNotificacionId: datosNotificacion.id,
-      denuncianteId: denuncia.denunciante.id,
-      email: denunciante_email,
-      codPostal: denunciante_postal,
-    });
-
-    for (const denunciado of denunciados) {
-      await this.direccionesEnviadasService.create({
-        datosNotificacionId: datosNotificacion.id,
-        denunciadoId: denunciado.id,
-        email: denunciado.email,
-        // codPostal: denunciado.codPostal,
-      });
-    }
-
-    for (const denunciado of postales) {
-      await this.direccionesEnviadasService.create({
-        datosNotificacionId: datosNotificacion.id,
-        denunciadoId: denunciado.id,
-        // email: denunciado.email,
-        codPostal: denunciado.codPostal,
-      });
-    }
-
     await this.movimientoService.create({
       denuncia,
       tabla_afectada: 'Denuncia_Estados',
       entidad_id: nuevoEstado.denunciaEstadosId,
       tipo_cambio: 'CREATE',
-      descripcion: 'Cambio de estado de la causa.',
+      descripcion: `Cambio de estado a ${estado.descripcion}.`,
       valor_nuevo: estado.descripcion,
       usuarioId: userId,
     });
 
+    if (tipoCorreo) {
+      const datosNotificacion = await this.datosNotificacionService.create({
+        ...data,
+        denuncia,
+        denunciaEstado: nuevoEstado,
+        id_usuario: userId,
+        envio_tipo: tipoEnvio,
+      });
+
+      if (tipoEnvio === 'email' || tipoEnvio === 'ambos') {
+        const form = new FormData();
+        const emailsToSend = [];
+        const message =
+          tipoCorreo === 'A'
+            ? 'Buenos días estimados, adjunto envío el acta de la audiencia celebrada en el marco del expediente de la referencia.'
+            : 'Buenos días estimados, adjunto envío Resolución de esta oficina en el marco del expediente de la referencia.';
+
+        await this.ftpService.connect();
+        const ruta = `${this._dir}/${id}`;
+        await this.ftpService.createDir(ruta);
+
+        const fileName = `${id}_cambio_estado_${estadoId}_${Date.now()}.pdf`;
+        const remotePath = `${ruta}/${fileName}`;
+
+        const streamFile = Readable.from(file.buffer);
+        await this.ftpService.fileUpload(streamFile, remotePath);
+        this.ftpService.close();
+
+        const documentoTipo = await this.documentosTiposService.findByKey(
+          'DOCUMENTO_NOTIFICACION',
+        );
+
+        console.log('📌 Registrando documento en la base de datos...');
+        await this.denunciaDocumentosService.create({
+          denunciaId: denuncia.id,
+          documentoTipoId: documentoTipo.id,
+          fileName,
+          path: remotePath,
+        });
+        console.log('✅ Documento registrado.');
+
+        if (denunciante.email) {
+          emailsToSend.push({
+            email: denunciante.email,
+            bodyEmail: {
+              message: message,
+              expte: `Expte.: ${nroExpediente} Presunta Infracción Ley 24.240`,
+            },
+            files: [fileName],
+          });
+        }
+
+        denunciados.forEach((denunciado) => {
+          if (denunciado.email) {
+            emailsToSend.push({
+              email: denunciado.email,
+              bodyEmail: {
+                message: message,
+                expte: `Expte.: ${nroExpediente} Presunta Infracción Ley 24.240`,
+              },
+              files: [fileName],
+            });
+          }
+        });
+
+        console.log(
+          '📨 Enviando correos a:',
+          emailsToSend.map((e) => e.email),
+        );
+
+        form.append('method', 'denuncia_cambio_estado');
+        form.append('data', JSON.stringify({ data: emailsToSend }));
+        form.append('hasFiles', 'true');
+        form.append(fileName, file.buffer, { filename: fileName });
+
+        try {
+          const response = await axios.post(
+            'https://notificaciones-8abd2b855cde.herokuapp.com/api/notifications',
+            form,
+            {
+              headers: {
+                'api-key': 'fJfCznx805geZEjuvAU533raN4HNh4WB',
+              },
+            },
+          );
+
+          console.log('✅ Emails enviados correctamente:', response.data);
+        } catch (error) {
+          console.error(
+            '❌ Error enviando emails:',
+            error.response?.data || error.message,
+          );
+        }
+      }
+
+      if (tipoEnvio === 'postal' || tipoEnvio === 'ambos') {
+        console.log('📦 Registrando direcciones postales...');
+
+        await this.direccionesEnviadasService.create({
+          datosNotificacionId: datosNotificacion.id,
+          denuncianteId: denuncia.denunciante.id,
+          email: tipoEnvio === 'postal' ? null : denunciante.email,
+          codPostal: denunciante.codPostal,
+        });
+
+        await Promise.all(
+          denunciados.map(async (denunciado) => {
+            return this.direccionesEnviadasService.create({
+              datosNotificacionId: datosNotificacion.id,
+              denunciadoId: denunciado.id,
+              email: tipoEnvio === 'postal' ? null : denunciado.email,
+            });
+          }),
+        );
+
+        await Promise.all(
+          postales.map(async (denunciado) => {
+            return this.direccionesEnviadasService.create({
+              datosNotificacionId: datosNotificacion.id,
+              denunciadoId: denunciado.id,
+              codPostal: denunciado.codPostal,
+            });
+          }),
+        );
+
+        console.log('✅ Direcciones postales registradas.');
+      }
+    } else {
+      console.log(
+        '📌 No hay notificación por correo, registrando en datos de notificación...',
+      );
+      await this.datosNotificacionService.create({
+        ...data,
+        denuncia,
+        denunciaEstado: nuevoEstado,
+        id_usuario: userId,
+      });
+    }
+
+    console.log('📌 Actualizando estado de la denuncia...');
     denuncia.estado = estado;
     denuncia.ultMovimiento = new Date();
 
-    return this.denunciaRepo.save(denuncia);
+    console.log('📦 Guardando denuncia actualizada...');
+    const updatedDenuncia = await this.denunciaRepo.save(denuncia);
+    console.log('✅ Denuncia guardada con éxito:', updatedDenuncia);
+
+    return updatedDenuncia;
   }
 }

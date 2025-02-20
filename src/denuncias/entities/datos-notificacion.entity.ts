@@ -8,10 +8,9 @@ import {
   OneToMany,
 } from 'typeorm';
 import { Denuncia } from './denuncia.entity';
-import { Denunciado } from './denunciado.entity';
-import { DenunciadoDenuncia } from './denuncia-denunciado.entity';
 import { DenunciaEstados } from './denuncia-estado.entity';
 import { DireccionesEnviadas } from './direcciones-enviadas.entity';
+import { Usuario } from 'src/usuarios/entities/usuario.entity';
 
 @Entity({ name: 'Datos_Notificacion' })
 export class DatosNotificacion {
@@ -24,6 +23,9 @@ export class DatosNotificacion {
   @Column({ type: 'varchar', length: 255 })
   meet_link: string;
 
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  documentPath: string;
+
   @OneToOne(() => DenunciaEstados, (d) => d.datosNotificacion)
   @JoinColumn({ name: 'id_denuncia_estado' })
   denunciaEstado: DenunciaEstados;
@@ -34,4 +36,11 @@ export class DatosNotificacion {
   @ManyToOne(() => Denuncia, (denuncia) => denuncia.archivos)
   @JoinColumn({ name: 'id_denuncia' })
   denuncia: Denuncia;
+
+  @Column({ type: 'int', name: 'id_usuario' })
+  id_usuario: number;
+
+  @ManyToOne(() => Usuario)
+  @JoinColumn({ name: 'id_usuario' })
+  usuario: Usuario;
 }

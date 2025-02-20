@@ -18,17 +18,23 @@ export class DatosNotificacionService {
     denunciaEstado,
     envio_tipo,
     meet_link,
+    documentPath,
+    id_usuario,
   }: {
     denuncia: Denuncia;
     denunciaEstado: DenunciaEstados;
     envio_tipo: string;
     meet_link: string;
+    documentPath?: string;
+    id_usuario?: number;
   }) {
     const newDenounced = this.datosNotificacionRepo.create({
       denuncia,
       denunciaEstado,
       envio_tipo,
       meet_link,
+      documentPath: documentPath || null,
+      id_usuario,
     });
 
     return await this.datosNotificacionRepo.save(newDenounced);
