@@ -1435,14 +1435,6 @@ export class DenunciasService {
     });
 
     if (tipoCorreo) {
-      const datosNotificacion = await this.datosNotificacionService.create({
-        ...data,
-        denuncia,
-        denunciaEstado: nuevoEstado,
-        id_usuario: userId,
-        envio_tipo: tipoEnvio,
-      });
-
       if (tipoEnvio === 'email') {
         const form = new FormData();
         const emailsToSend = [];
@@ -1525,6 +1517,15 @@ export class DenunciasService {
           );
         }
 
+        const datosNotificacion = await this.datosNotificacionService.create({
+          ...data,
+          denuncia,
+          denunciaEstado: nuevoEstado,
+          id_usuario: userId,
+          envio_tipo: tipoEnvio,
+          documentPath: remotePath,
+        });
+
         await this.direccionesEnviadasService.create({
           datosNotificacionId: datosNotificacion.id,
           denuncianteId: denuncia.denunciante.id,
@@ -1541,6 +1542,14 @@ export class DenunciasService {
           }),
         );
       } else if (tipoEnvio === 'postal') {
+        const datosNotificacion = await this.datosNotificacionService.create({
+          ...data,
+          denuncia,
+          denunciaEstado: nuevoEstado,
+          id_usuario: userId,
+          envio_tipo: tipoEnvio,
+        });
+
         await this.direccionesEnviadasService.create({
           datosNotificacionId: datosNotificacion.id,
           denuncianteId: denuncia.denunciante.id,
@@ -1579,8 +1588,6 @@ export class DenunciasService {
         const documentoTipo = await this.documentosTiposService.findByKey(
           'DOCUMENTO_NOTIFICACION',
         );
-
-        console.log('🔍 Id de denuncia', id);
 
         await this.denunciaDocumentosService.create({
           denunciaId: id,
@@ -1641,6 +1648,15 @@ export class DenunciasService {
             error.response?.data || error.message,
           );
         }
+
+        const datosNotificacion = await this.datosNotificacionService.create({
+          ...data,
+          denuncia,
+          denunciaEstado: nuevoEstado,
+          id_usuario: userId,
+          envio_tipo: tipoEnvio,
+          documentPath: remotePath,
+        });
 
         await this.direccionesEnviadasService.create({
           datosNotificacionId: datosNotificacion.id,
