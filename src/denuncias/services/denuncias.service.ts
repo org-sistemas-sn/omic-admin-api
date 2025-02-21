@@ -1444,8 +1444,6 @@ export class DenunciasService {
       });
 
       if (tipoEnvio === 'email') {
-        // Enviar correos electrónicos
-        console.log('📨 Modo de envío: SOLO EMAIL');
         const form = new FormData();
         const emailsToSend = [];
         const message =
@@ -1468,12 +1466,16 @@ export class DenunciasService {
           'DOCUMENTO_NOTIFICACION',
         );
 
-        await this.denunciaDocumentosService.create({
+        console.log('🔍 Id de denuncia', id);
+
+        const response = await this.denunciaDocumentosService.create({
           denunciaId: id,
           documentoTipoId: documentoTipo.id,
           fileName,
           path: remotePath,
         });
+
+        console.log('🔍 Id de documento', response);
 
         if (denunciante.email) {
           emailsToSend.push({
@@ -1499,11 +1501,6 @@ export class DenunciasService {
           }
         });
 
-        console.log(
-          '📨 Enviando correos a:',
-          emailsToSend.map((e) => e.email),
-        );
-
         form.append('method', 'denuncia_cambio_estado');
         form.append('data', JSON.stringify({ data: emailsToSend }));
         form.append('hasFiles', 'true');
@@ -1527,14 +1524,27 @@ export class DenunciasService {
             error.response?.data || error.message,
           );
         }
-      } else if (tipoEnvio === 'postal') {
-        // Registrar solo direcciones postales
-        console.log('📦 Modo de envío: SOLO POSTAL');
 
         await this.direccionesEnviadasService.create({
           datosNotificacionId: datosNotificacion.id,
           denuncianteId: denuncia.denunciante.id,
-          email: null, // En postal no se envían emails
+          email: denunciante.email,
+        });
+
+        await Promise.all(
+          postales.map(async (denunciado) => {
+            return this.direccionesEnviadasService.create({
+              datosNotificacionId: datosNotificacion.id,
+              denunciadoId: denunciado.id,
+              email: denunciado.email,
+            });
+          }),
+        );
+      } else if (tipoEnvio === 'postal') {
+        await this.direccionesEnviadasService.create({
+          datosNotificacionId: datosNotificacion.id,
+          denuncianteId: denuncia.denunciante.id,
+          email: null,
           codPostal: denunciante.codPostal,
         });
 
@@ -1547,13 +1557,7 @@ export class DenunciasService {
             });
           }),
         );
-
-        console.log('✅ Direcciones postales registradas.');
       } else if (tipoEnvio === 'ambos') {
-        // Procesar tanto email como postal
-        console.log('📦📨 Modo de envío: AMBOS (EMAIL y POSTAL)');
-
-        // 📌 Enviar correos
         const form = new FormData();
         const emailsToSend = [];
         const message =
@@ -1575,6 +1579,8 @@ export class DenunciasService {
         const documentoTipo = await this.documentosTiposService.findByKey(
           'DOCUMENTO_NOTIFICACION',
         );
+
+        console.log('🔍 Id de denuncia', id);
 
         await this.denunciaDocumentosService.create({
           denunciaId: id,
@@ -1635,9 +1641,6 @@ export class DenunciasService {
             error.response?.data || error.message,
           );
         }
-
-        // 📌 Registrar direcciones postales
-        console.log('📦 Registrando direcciones postales...');
 
         await this.direccionesEnviadasService.create({
           datosNotificacionId: datosNotificacion.id,
@@ -1652,16 +1655,12 @@ export class DenunciasService {
               datosNotificacionId: datosNotificacion.id,
               denunciadoId: denunciado.id,
               codPostal: denunciado.codPostal,
+              email: denunciado.email,
             });
           }),
         );
-
-        console.log('✅ Direcciones postales registradas.');
       }
     } else {
-      console.log(
-        '📌 No hay notificación por correo, registrando en datos de notificación...',
-      );
       await this.datosNotificacionService.create({
         ...data,
         denuncia,
@@ -1670,13 +1669,10 @@ export class DenunciasService {
       });
     }
 
-    console.log('📌 Actualizando estado de la denuncia...');
     denuncia.estado = estado;
     denuncia.ultMovimiento = new Date();
 
-    console.log('📦 Guardando denuncia actualizada...');
     const updatedDenuncia = await this.denunciaRepo.save(denuncia);
-    console.log('✅ Denuncia guardada con éxito:', updatedDenuncia);
 
     return updatedDenuncia;
   }
