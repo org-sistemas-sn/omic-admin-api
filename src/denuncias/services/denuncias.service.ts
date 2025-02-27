@@ -45,7 +45,7 @@ import { ConfigType } from '@nestjs/config';
 
 @Injectable()
 export class DenunciasService {
-  private _dir = '/images/omic-admin-dev/causas';
+  private _dir = process.env.FTP_FOLDER || '/images/omic-admin-dev/causas';
   private readonly startDateDenuncia: string;
   constructor(
     @InjectRepository(Denuncia) private denunciaRepo: Repository<Denuncia>,
