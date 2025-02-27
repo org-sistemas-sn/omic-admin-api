@@ -15,4 +15,5 @@ export default registerAs('config', () => ({
     user: process.env.FTP_USER,
     password: process.env.FTP_PASSWORD,
   },
+  startDateDenuncia: process.env.START_DATE_DENUNCIA,
 }));

@@ -10,7 +10,9 @@ import {
   Equal,
   FindOperator,
   FindOptionsWhere,
+  In,
   Like,
+  MoreThanOrEqual,
   Repository,
 } from 'typeorm';
 
@@ -38,9 +40,13 @@ import { MovimientoService } from 'src/movimientos/services/movimientos.service'
 import { CausasService } from 'src/causas/services/causa.service';
 import { generatePDF } from '../utils/generatePDF';
 
+import config from 'src/config';
+import { ConfigType } from '@nestjs/config';
+
 @Injectable()
 export class DenunciasService {
   private _dir = '/images/omic-admin-dev/causas';
+  private readonly startDateDenuncia: string;
   constructor(
     @InjectRepository(Denuncia) private denunciaRepo: Repository<Denuncia>,
     private autorizadoService: AutorizadosService,
@@ -58,7 +64,11 @@ export class DenunciasService {
     private movimientoService: MovimientoService,
     @Inject(forwardRef(() => CausasService))
     private causasService: CausasService,
-  ) {}
+    @Inject(config.KEY) private configService: ConfigType<typeof config>,
+  ) {
+    this.startDateDenuncia =
+      this.configService.startDateDenuncia || '2024-01-01';
+  }
 
   async create(data: CreateComplaintDto) {
     const { autorizado, denunciante, denunciados, ...complaint } = data;
@@ -111,6 +121,12 @@ export class DenunciasService {
           ultMovimiento,
           orden = 'DESC',
         } = params;
+
+        if (this.startDateDenuncia) {
+          where.fecha = MoreThanOrEqual(
+            new Date(this.startDateDenuncia.replaceAll('-', '/')),
+          );
+        }
 
         // if (nombre && !apellido)
         //   where.denunciante = { nombre: Like(`%${nombre}%`) };
@@ -183,6 +199,8 @@ export class DenunciasService {
 
         if (estado) {
           where.estado = Equal(estado);
+        } else {
+          where.estado = In([1, 2, 3]);
         }
 
         if (!limit) {
