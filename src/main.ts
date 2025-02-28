@@ -25,6 +25,8 @@ async function bootstrap() {
       `http://localhost:3000`,
       `https://stage--omic-sn-admin.netlify.app`,
       `https://omic-sn.netlify.app`,
+      `https://testing5.sannicolasciudad.gob.ar/ `,
+      `https://testing6.sannicolasciudad.gob.ar`,
     ],
     credentials: true,
   });
