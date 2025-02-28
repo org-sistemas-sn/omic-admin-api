@@ -27,6 +27,8 @@ async function bootstrap() {
       `https://omic-sn.netlify.app`,
       `https://testing5.sannicolasciudad.gob.ar/ `,
       `https://testing6.sannicolasciudad.gob.ar`,
+      `https://omic.sannicolas.gob.ar/`,
+      `https://omic-admin.sannicolas.gob.ar/`,
     ],
     credentials: true,
   });
