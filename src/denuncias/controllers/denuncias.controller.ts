@@ -116,9 +116,9 @@ export class DenunciasController {
     return this.denunciaEstadosService.lastApproved();
   }
 
-  @Get('/archivos')
-  denunciaArchivos(@Param() param: any) {
-    return this.denunciaService.denunciaArchivos(param.id);
+  @Get('/archivos/:id')
+  denunciaArchivos(@Param('id') id: number) {
+    return this.denunciaService.denunciaArchivos(id);
   }
 
   @Get('/documentos')
