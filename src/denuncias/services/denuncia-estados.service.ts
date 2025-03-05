@@ -47,7 +47,7 @@ export class DenunciaEstadosService {
   }
 
   async lastApproved() {
-    const estado = await this.estadosService.findByKey('ACEPTADO');
+    const estado = await this.estadosService.findByKey('ESPERA_AUDIENCIA');
 
     const relations = ['denuncia'];
     const result = await this.denunciaEstadosRepo.findOne({

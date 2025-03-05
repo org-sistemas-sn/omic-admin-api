@@ -362,7 +362,8 @@ export class DenunciasService {
     if (!denuncia) {
       throw new NotFoundException();
     }
-    const estado = await this.estadosService.findByKey('ACEPTADO');
+
+    const estado = await this.estadosService.findByKey('ESPERA_AUDIENCIA');
 
     this.denunciaRepo.merge(denuncia, { estado });
 
