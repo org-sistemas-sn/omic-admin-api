@@ -6,7 +6,11 @@ import * as carbone from 'carbone';
 export class TemplateService {
   async createDocx(data, fileName) {
     try {
-      const dir = process.env.SRC_DIR_TEMPLATE || __dirname;
+      const dir = path.resolve(
+        process.env.SRC_DIR_TEMPLATE || process.cwd(),
+        'src',
+        'template',
+      );
 
       return await new Promise((resolve, reject) => {
         carbone.render(
