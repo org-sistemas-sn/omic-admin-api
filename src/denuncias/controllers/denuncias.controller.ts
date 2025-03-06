@@ -121,9 +121,9 @@ export class DenunciasController {
     return this.denunciaService.denunciaArchivos(id);
   }
 
-  @Get('/documentos')
-  denunciaDocumentos(@Param() param: any) {
-    return this.denunciaService.denunciaDocumentos(param.id);
+  @Get('/documentos/:id')
+  denunciaDocumentos(@Param('id') id: number) {
+    return this.denunciaService.denunciaDocumentos(id);
   }
 
   @Get('/cargar-movimientos')
