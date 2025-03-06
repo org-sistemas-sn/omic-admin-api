@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
+  Between,
   Equal,
   FindOperator,
   FindOptionsWhere,
@@ -141,7 +142,13 @@ export class DenunciasService {
           where.fecha = new Date(date.replaceAll('-', '/'));
         }
         if (ultMovimiento) {
-          where.ultMovimiento = new Date(ultMovimiento.replaceAll('-', '/'));
+          const fechaInicio = new Date(ultMovimiento);
+          fechaInicio.setUTCHours(0, 0, 0, 0);
+
+          const fechaFin = new Date(ultMovimiento);
+          fechaFin.setUTCHours(23, 59, 59, 999);
+
+          where.ultMovimiento = Between(fechaInicio, fechaFin);
         }
 
         if (denunciante) {
