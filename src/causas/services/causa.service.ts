@@ -67,28 +67,18 @@ export class CausasService {
   }
 
   async deleteCausa(nroCausa: number) {
-    const queryRunner = this.causasRepo.manager.connection.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-    try {
-      await queryRunner.manager.query(
-        `UPDATE causa SET denunciaId = NULL WHERE nroCausa = ?`,
-        [nroCausa],
-      );
+    const causa = await this.causasRepo.findOne({
+      where: { nroCausa },
+    });
 
-      await queryRunner.manager.query(
-        `UPDATE causa SET deletedAt = NOW() WHERE nroCausa = ?`,
-        [nroCausa],
+    if (!causa) {
+      throw new NotFoundException(
+        `La causa con nroCausa ${nroCausa} no existe.`,
       );
-
-      await queryRunner.commitTransaction();
-      return { message: `Causa ${nroCausa} eliminada correctamente.` };
-    } catch (error) {
-      await queryRunner.rollbackTransaction();
-      throw new InternalServerErrorException('Error eliminando la causa');
-    } finally {
-      await queryRunner.release();
     }
+    await this.causasRepo.update({ nroCausa }, { deletedAt: new Date() });
+
+    return { message: `Causa ${nroCausa} eliminada correctamente.` };
   }
 
   async findCausas(params?: FilterCauseDto) {
