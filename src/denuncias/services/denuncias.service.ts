@@ -332,6 +332,7 @@ export class DenunciasService {
       hhmm_meet: time_link,
     };
   }
+
   async aprobbed(data) {
     const {
       id,
@@ -741,7 +742,7 @@ export class DenunciasService {
   async revert(data) {
     const { id, userId } = data;
 
-    const relations = ['denunciante', 'denunciaDocumentos'];
+    const relations = ['denunciante', 'denunciaDocumentos', 'estado', 'causa'];
 
     const denuncia = await this.denunciaRepo.findOne({
       where: { id },
@@ -758,6 +759,13 @@ export class DenunciasService {
       await this.denunciaDocumentosService.delete(e);
     }
     this.ftpService.close();
+
+    if (denuncia.estado.key === 'ESPERA_AUDIENCIA') {
+      const causa = await this.causasService.findCausaByDenunciaId(denuncia.id);
+      if (causa) {
+        await this.causasService.deleteCausa(causa.nroCausa);
+      }
+    }
 
     const estado = await this.estadosService.findByKey('RECIBIDA');
     // this.denunciaRepo.merge(denuncia, { estado });

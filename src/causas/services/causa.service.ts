@@ -10,7 +10,9 @@ import {
   Equal,
   FindOperator,
   FindOptionsWhere,
+  IsNull,
   Like,
+  Not,
   Repository,
 } from 'typeorm';
 
@@ -28,13 +30,65 @@ export class CausasService {
   ) {}
 
   async create(data: { anioCausa: number; denunciaId: number }) {
-    const newRecord = this.causasRepo.create(data);
+    const denuncia = await this.denunciasService.findOne(data.denunciaId);
+
+    if (!denuncia) {
+      throw new NotFoundException(
+        `Denuncia con ID ${data.denunciaId} no encontrada.`,
+      );
+    }
+
+    const newRecord = this.causasRepo.create({
+      anioCausa: data.anioCausa,
+      denuncia,
+    });
     const record = await this.causasRepo.save(newRecord);
 
     if (!record) {
       throw new NotFoundException();
     }
+
     return record;
+  }
+
+  async findCausaByDenunciaId(denunciaId: number) {
+    const record = await this.causasRepo.findOne({
+      where: {
+        denuncia: { id: denunciaId },
+      },
+      relations: ['denuncia'],
+    });
+
+    if (!record) {
+      throw new NotFoundException();
+    }
+
+    return record;
+  }
+
+  async deleteCausa(nroCausa: number) {
+    const queryRunner = this.causasRepo.manager.connection.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      await queryRunner.manager.query(
+        `UPDATE causa SET denunciaId = NULL WHERE nroCausa = ?`,
+        [nroCausa],
+      );
+
+      await queryRunner.manager.query(
+        `UPDATE causa SET deletedAt = NOW() WHERE nroCausa = ?`,
+        [nroCausa],
+      );
+
+      await queryRunner.commitTransaction();
+      return { message: `Causa ${nroCausa} eliminada correctamente.` };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw new InternalServerErrorException('Error eliminando la causa');
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async findCausas(params?: FilterCauseDto) {
@@ -48,8 +102,8 @@ export class CausasService {
         'denuncia.denunciadoDenuncia.denunciado',
         'denuncia.denunciaEstados',
       ];
+
       if (params) {
-        const where: FindOptionsWhere<Denuncia> = {};
         const { limit, offset } = params;
 
         const {
@@ -62,17 +116,23 @@ export class CausasService {
           estado,
           date,
           ultMovimiento,
-          orden = 'DESC',
+          orden = 'desc',
         } = params;
 
+        const denunciaWhere: FindOptionsWhere<Denuncia> = {
+          id: Not(IsNull()),
+        };
+
         if (date) {
-          where.fecha = new Date(date.replaceAll('-', '/'));
+          denunciaWhere.fecha = new Date(date.replaceAll('-', '/'));
         }
         if (ultMovimiento) {
-          where.ultMovimiento = new Date(ultMovimiento.replaceAll('-', '/'));
+          denunciaWhere.ultMovimiento = new Date(
+            ultMovimiento.replaceAll('-', '/'),
+          );
         }
         if (nroExpediente) {
-          where.nroExpediente = nroExpediente;
+          denunciaWhere.nroExpediente = nroExpediente;
         }
 
         if (denunciante) {
@@ -88,14 +148,15 @@ export class CausasService {
             if (dni) {
               denuncianteWhere = { ...denuncianteWhere, dni: Like(`%${dni}%`) };
             }
-            if (email)
+            if (email) {
               denuncianteWhere = {
                 ...denuncianteWhere,
                 email: Like(`%${email}%`),
               };
-
+            }
             return denuncianteWhere;
           });
+
           const denuncianteNombre = words.map((e) => {
             let denuncianteWhere: {
               nombre: FindOperator<string>;
@@ -107,32 +168,31 @@ export class CausasService {
             if (dni) {
               denuncianteWhere = { ...denuncianteWhere, dni: Like(`%${dni}%`) };
             }
-            if (email)
+            if (email) {
               denuncianteWhere = {
                 ...denuncianteWhere,
                 email: Like(`%${email}%`),
               };
-
+            }
             return denuncianteWhere;
           });
 
-          where.denunciante = [...denuncianteApellido, ...denuncianteNombre];
-          // {
-          // nombre: words.map((e) => Like(`%${e}%`)),
-          // apellido: words.map((e) => Like(`%${e}%`)),
-          // };
+          denunciaWhere.denunciante = [
+            ...denuncianteApellido,
+            ...denuncianteNombre,
+          ];
         } else {
-          if (dni) where.denunciante = { dni: Like(`%${dni}%`) };
-          if (email) where.denunciante = { email: Like(`%${email}%`) };
+          if (dni) denunciaWhere.denunciante = { dni: Like(`%${dni}%`) };
+          if (email) denunciaWhere.denunciante = { email: Like(`%${email}%`) };
         }
-        // if (fechaInicio) where.createdAt = Like(`%${fechaInicio}%`);
-        // if (estadoGeneral) where.estadoGeneral = estadoGeneral;
 
         if (estado) {
-          where.estado = Equal(estado);
+          denunciaWhere.estado = Equal(estado);
         }
 
-        const causaWhere: { nroCausa?: number; anioCausa?: number } = {};
+        const causaWhere: FindOptionsWhere<Causa> = {
+          deletedAt: null,
+        };
 
         if (nroCausa) {
           causaWhere.nroCausa = nroCausa;
@@ -146,23 +206,25 @@ export class CausasService {
             relations,
             where: {
               ...causaWhere,
-              denuncia: where,
+              denuncia: denunciaWhere,
             },
           });
         }
+
         return this.causasRepo.find({
           relations,
           where: {
             ...causaWhere,
-            denuncia: where,
+            denuncia: denunciaWhere,
           },
           take: limit,
           skip: offset,
           order: {
-            nroCausa: orden,
+            nroCausa: orden.toLowerCase(),
           },
         });
       }
+
       return this.causasRepo.find({ relations });
     } catch (error) {
       throw new InternalServerErrorException(error.message);
@@ -187,6 +249,7 @@ export class CausasService {
     const cause = await this.causasRepo.findOne({
       where: {
         nroCausa,
+        deletedAt: null,
       },
       relations,
     });

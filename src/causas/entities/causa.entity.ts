@@ -6,6 +6,7 @@ import {
   OneToOne,
   PrimaryGeneratedColumn,
   PrimaryColumn,
+  DeleteDateColumn,
 } from 'typeorm';
 
 @Entity({ name: 'causa' })
@@ -16,7 +17,10 @@ export class Causa {
   @PrimaryColumn({ type: 'integer', width: 6, name: 'anioCausa' })
   anioCausa: number;
 
-  @OneToOne(() => Denuncia, (denuncia) => denuncia.causa)
+  @OneToOne(() => Denuncia, (denuncia) => denuncia.causa, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
   @JoinColumn({ name: 'denunciaId' })
   denuncia: Denuncia;
 
@@ -26,4 +30,7 @@ export class Causa {
     default: () => 'CURRENT_TIMESTAMP(6)',
   })
   createAt: Date;
+
+  @DeleteDateColumn({ name: 'deletedAt', type: 'timestamp', nullable: true })
+  deletedAt?: Date;
 }
