@@ -1165,8 +1165,8 @@ export class DenunciasService {
     });
 
     await this.denunciadoDenunciaService.create({
-      denuncia,
-      denunciado,
+      denuncia: denuncia,
+      denunciado: denunciado,
     });
 
     for (const e of emails) {
@@ -1280,8 +1280,8 @@ export class DenunciasService {
       valor_nuevo: nombre,
       usuarioId: userId,
     });
-    denuncia.ultMovimiento = new Date();
-    await this.denunciaRepo.save(denuncia);
+
+    await this.denunciaRepo.update(denuncia.id, { ultMovimiento: new Date() });
 
     return denunciado;
   }

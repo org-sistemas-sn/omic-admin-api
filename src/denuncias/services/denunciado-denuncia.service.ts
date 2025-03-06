@@ -12,9 +12,11 @@ export class DenunciadoDenunciaService {
   ) {}
 
   async create({ denuncia, denunciado }) {
+    console.log('Denuncia recibida:', denuncia);
+    console.log('Denunciado recibido:', denunciado);
     const newDenounced = this.denunciadoDenunciaRepo.create({
-      denuncia,
-      denunciado,
+      denuncia: denuncia,
+      denunciado: denunciado,
     });
     // newDenounced.denuncia = complaint;
     return await this.denunciadoDenunciaRepo.save(newDenounced);
