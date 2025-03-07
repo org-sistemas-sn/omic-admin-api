@@ -235,6 +235,7 @@ export class CausasService {
       'denuncia.datosNotificacion.direccionesEnviadas.denunciado',
       'denuncia.datosNotificacion.denunciaEstado',
       'denuncia.datosNotificacion.denunciaEstado.estado',
+      'denuncia.datosNotificacion.usuario',
     ];
     const cause = await this.causasRepo.findOne({
       where: {
