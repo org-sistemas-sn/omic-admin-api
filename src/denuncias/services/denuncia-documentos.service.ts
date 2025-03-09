@@ -18,6 +18,8 @@ export class DenunciaDocumentosService {
     path: string;
     documentName?: string;
   }) {
+    console.log('Datos antes de crear DenunciaDocumentos:', data);
+
     const newDenounced = this.denunciaDocumentosRepo.create(data);
 
     return await this.denunciaDocumentosRepo.save(newDenounced);

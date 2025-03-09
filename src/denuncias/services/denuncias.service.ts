@@ -1492,17 +1492,6 @@ export class DenunciasService {
           'DOCUMENTO_NOTIFICACION',
         );
 
-        console.log('🔍 Id de denuncia', id);
-
-        const response = await this.denunciaDocumentosService.create({
-          denunciaId: id,
-          documentoTipoId: documentoTipo.id,
-          fileName,
-          path: remotePath,
-        });
-
-        console.log('🔍 Id de documento', response);
-
         if (denunciante.email) {
           emailsToSend.push({
             email: denunciante.email,
@@ -1566,8 +1555,8 @@ export class DenunciasService {
           email: denunciante.email,
         });
 
-        await Promise.all(
-          postales.map(async (denunciado) => {
+        Promise.all(
+          denunciados.map(async (denunciado) => {
             return this.direccionesEnviadasService.create({
               datosNotificacionId: datosNotificacion.id,
               denunciadoId: denunciado.id,
@@ -1575,23 +1564,45 @@ export class DenunciasService {
             });
           }),
         );
+
+        this.denunciaDocumentosService.create({
+          denunciaId: denuncia.id,
+          documentoTipoId: documentoTipo.id,
+          fileName,
+          path: remotePath,
+        });
       } else if (tipoEnvio === 'postal') {
+        await this.ftpService.connect();
+        const ruta = `${this._dir}/${id}`;
+        await this.ftpService.createDir(ruta);
+
+        const fileName = `${id}_cambio_estado_${estadoId}_${Date.now()}.pdf`;
+        const remotePath = `${ruta}/${fileName}`;
+
+        const streamFile = Readable.from(file.buffer);
+        await this.ftpService.fileUpload(streamFile, remotePath);
+        this.ftpService.close();
+
         const datosNotificacion = await this.datosNotificacionService.create({
           ...data,
           denuncia,
           denunciaEstado: nuevoEstado,
           id_usuario: userId,
           envio_tipo: tipoEnvio,
+          documentPath: remotePath,
         });
+
+        const documentoTipo = await this.documentosTiposService.findByKey(
+          'DOCUMENTO_NOTIFICACION',
+        );
 
         await this.direccionesEnviadasService.create({
           datosNotificacionId: datosNotificacion.id,
           denuncianteId: denuncia.denunciante.id,
-          email: null,
           codPostal: denunciante.codPostal,
         });
 
-        await Promise.all(
+        Promise.all(
           postales.map(async (denunciado) => {
             return this.direccionesEnviadasService.create({
               datosNotificacionId: datosNotificacion.id,
@@ -1600,6 +1611,13 @@ export class DenunciasService {
             });
           }),
         );
+
+        this.denunciaDocumentosService.create({
+          denunciaId: denuncia.id,
+          documentoTipoId: documentoTipo.id,
+          fileName,
+          path: remotePath,
+        });
       } else if (tipoEnvio === 'ambos') {
         const form = new FormData();
         const emailsToSend = [];
@@ -1654,11 +1672,6 @@ export class DenunciasService {
           }
         });
 
-        console.log(
-          '📨 Enviando correos a:',
-          emailsToSend.map((e) => e.email),
-        );
-
         form.append('method', 'denuncia_cambio_estado');
         form.append('data', JSON.stringify({ data: emailsToSend }));
         form.append('hasFiles', 'true');
@@ -1699,16 +1712,29 @@ export class DenunciasService {
           codPostal: denunciante.codPostal,
         });
 
-        await Promise.all(
-          postales.map(async (denunciado) => {
-            return this.direccionesEnviadasService.create({
+        Promise.all([
+          ...postales.map((denunciado) =>
+            this.direccionesEnviadasService.create({
               datosNotificacionId: datosNotificacion.id,
               denunciadoId: denunciado.id,
               codPostal: denunciado.codPostal,
+            }),
+          ),
+          ...denunciados.map((denunciado) =>
+            this.direccionesEnviadasService.create({
+              datosNotificacionId: datosNotificacion.id,
+              denunciadoId: denunciado.id,
               email: denunciado.email,
-            });
-          }),
-        );
+            }),
+          ),
+        ]);
+
+        this.denunciaDocumentosService.create({
+          denunciaId: denuncia.id,
+          documentoTipoId: documentoTipo.id,
+          fileName,
+          path: remotePath,
+        });
       }
     } else {
       await this.datosNotificacionService.create({
