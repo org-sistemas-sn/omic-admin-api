@@ -48,6 +48,9 @@ export class FtpService {
 
   async createDir(dir: string) {
     try {
+      if (this._ftpClient.closed) {
+        await this.connect();
+      }
       await this._ftpClient.ensureDir(dir);
     } catch (err) {
       this._ftpClient.close();

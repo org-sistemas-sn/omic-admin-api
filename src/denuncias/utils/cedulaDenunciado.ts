@@ -40,7 +40,22 @@ export const cedulaDenunciado = (d: any) => {
   <div style="display: flex; justify-content: center; color: #0477AD; background-color: #EBE8E8; border-radius: 10px;">
     <div style="display: flex; flex-direction: column; align-items: flex-start; padding: 30px; gap: 4px;">
       <div><b>DENUNCIADO:</b> ${d.denunciado}</div>
-      <div><b>CORREO ELECTRÓNICO CONSTITUIDO</b> ${d.email_denunciante}</div>
+      ${
+        d.envio_tipo === 'email'
+          ? `<div><b>CORREO ELECTRÓNICO CONSTITUIDO</b> ${d.email_denunciado}</div>`
+          : ''
+      }
+      ${
+        d.envio_tipo === 'postal'
+          ? `<div><b>DIRECCIÓN CONSTITUIDA</b> ${d.direccion_denunciado}</div>`
+          : ''
+      }
+      ${
+        d.envio_tipo === 'ambos'
+          ? `<div><b>CORREO ELECTRÓNICO CONSTITUIDO</b> ${d.email_denunciado}</div>
+          <div><b>DIRECCIÓN CONSTITUIDA</b> ${d.direccion_denunciado}</div>`
+          : ''
+      }
     </div>
   </div>
   <div style="padding: 30px; color: #0477AD; font-weight: 700;">
@@ -54,7 +69,9 @@ export const cedulaDenunciado = (d: any) => {
     </div>
     <div style="display: flex; align-items: center; gap: 5px;">
       <div><img src="https://staticcontent.sannicolasciudad.gob.ar/images/omic-admin/images/icon3.jpg" /></div>
-      <div>FECHA: ${d.weekday_meet}, ${d.day_meet} de ${d.month_meet} de ${d.year_meet} </div>
+      <div>FECHA: ${d.weekday_meet}, ${d.day_meet} de ${d.month_meet} de ${
+    d.year_meet
+  } </div>
     </div>
     <div style="display: flex; align-items: center; gap: 5px;">
       <div><img src="https://staticcontent.sannicolasciudad.gob.ar/images/omic-admin/images/icon1.jpg" /></div>

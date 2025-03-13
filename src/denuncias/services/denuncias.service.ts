@@ -27,7 +27,7 @@ import { FilterComplaintDto } from '../dtos/filter.dto';
 import { createDocx } from '../../utils/docxGen';
 import { DenunciaEstadosService } from './denuncia-estados.service';
 import { FtpService } from 'src/ftp/ftp.service';
-import { Readable } from 'stream';
+import { Readable, Stream } from 'stream';
 import { TemplateService } from 'src/template/template.service';
 import * as FormData from 'form-data';
 import axios from 'axios';
@@ -302,12 +302,16 @@ export class DenunciasService {
 
     time_link,
     date_link,
+    envio_tipo,
   }) {
     const dia = new Date().getDate();
     const mes = new Date().toLocaleString('es-AR', { month: 'long' });
     const año = new Date().getFullYear();
     const [year_meet, month_meet, day_meet] = date_link.split('-');
     const weekday_meet = WeekDays[new Date(date_link).getDay()];
+
+    const month_meet_number = parseInt(month_meet, 10);
+    const month_meet_string = month_meet_number.toString();
 
     return {
       nro_expediente,
@@ -330,10 +334,10 @@ export class DenunciasService {
       tel_denunciante:
         denuncia.denunciante.telefono || denuncia.denunciante.telefonoAlter,
       email_denunciante: denunciante_email,
-
+      envio_tipo,
       link_meet: meet_link,
       year_meet,
-      month_meet: Months[month_meet],
+      month_meet: Months[month_meet_string],
       day_meet,
       weekday_meet,
       hhmm_meet: time_link,
@@ -355,321 +359,393 @@ export class DenunciasService {
       envio_tipo,
     } = data;
 
-    const relations = [
-      'denunciante',
-      'denunciadoDenuncia',
-      'denunciadoDenuncia.denunciado',
-      'archivos',
-    ];
-
-    const denuncia = await this.denunciaRepo.findOne({
-      where: { id },
-      relations,
-    });
-
-    if (!denuncia) {
-      throw new NotFoundException();
-    }
-
-    const estado = await this.estadosService.findByKey('ESPERA_AUDIENCIA');
-
-    this.denunciaRepo.merge(denuncia, { estado });
-
-    const denunciaEstado = await this.denunciaEstadosService.create({
-      denunciaId: id,
-      estadoId: estado.id,
-      usuarioId: userId,
-    });
-
-    const datosNotificacion = await this.datosNotificacionService.create({
-      ...data,
-      denuncia,
-      denunciaEstado: denunciaEstado,
-    });
-
-    await this.direccionesEnviadasService.create({
-      datosNotificacionId: datosNotificacion.id,
-      denuncianteId: denuncia.denunciante.id,
-      email: denunciante_email,
-      codPostal: denunciante_postal,
-    });
-
-    for (const denunciado of denunciados) {
-      await this.direccionesEnviadasService.create({
-        datosNotificacionId: datosNotificacion.id,
-        denunciadoId: denunciado.id,
-        email: denunciado.email,
-        // codPostal: denunciado.codPostal,
-      });
-    }
-
-    for (const denunciado of postales) {
-      await this.direccionesEnviadasService.create({
-        datosNotificacionId: datosNotificacion.id,
-        denunciadoId: denunciado.id,
-        // email: denunciado.email,
-        codPostal: denunciado.codPostal,
-      });
-    }
-
-    // const nro_expediente = `${id}/${complaint.denunciante.apellido[0]}/${año}`;
-
-    const info = this.dtoInfo({
-      denuncia,
-      nro_expediente,
-      denunciante_email,
-      meet_link,
-      time_link,
-      date_link,
-    });
-
-    const denuncianteFiles = {
-      message: `Su denuncia contra ${info.denunciado} fue`,
-      key: 'CEDULA_APERTURA_DENUNCIANTE',
-      filename: `${id}_CEDULA_DENUNCIANTE_${Date.now()}.pdf`,
-      // template: 'CEDULA_APERTURA_DENUNCIANTE.docx',
-    };
-
-    const caratula_key = 'CARATULA';
-    const caratula_filename = `${id}_CARATULA_${Date.now()}.docx`;
-    const caratula_template = 'CARATULA.docx';
-
-    const caratula: any = await this.templateService.createDocx(
-      info,
-      caratula_template,
-    );
-
-    const apertura_key = 'APERTURA_INSTANCIA';
-    const apertura_filename = `${id}_APERTURA_INSTANCIA_${Date.now()}.docx`;
-    const apertura_template = 'APERTURA_DE_INSTANCIA.docx';
-
-    const apertura: any = await this.templateService.createDocx(
-      info,
-      apertura_template,
-    );
-
-    // CREAR CARPETA
-    console.log('Conexion FtpService');
     await this.ftpService.connect();
-    const ruta = `${this._dir}/${id}`;
-    await this.ftpService.createDir(ruta);
-    this.ftpService.close();
-    console.log('Carpeta creada');
 
-    // GUARDAR CARATULA
-    const streamFile = Readable.from(caratula);
-    const remotePathFile = ruta + `/${caratula_filename}`;
-    await this.ftpService.fileUpload(streamFile, remotePathFile);
-
-    const documentoTipo = await this.documentosTiposService.findByKey(
-      caratula_key,
-    );
-
-    await this.denunciaDocumentosService.create({
-      denunciaId: denuncia.id,
-      documentoTipoId: documentoTipo.id,
-      fileName: caratula_filename,
-      path: remotePathFile,
-    });
-
-    // GUARDAR APERTURA
-    const apertura_stream = Readable.from(apertura);
-    const apertura_remotePath = ruta + `/${apertura_filename}`;
-    await this.ftpService.fileUpload(apertura_stream, apertura_remotePath);
-
-    const apertura_documentoTipo = await this.documentosTiposService.findByKey(
-      apertura_key,
-    );
-
-    await this.denunciaDocumentosService.create({
-      denunciaId: denuncia.id,
-      documentoTipoId: apertura_documentoTipo.id,
-      fileName: apertura_filename,
-      path: apertura_remotePath,
-    });
-
-    const files = [
-      {
-        filename: apertura_filename,
-        file: apertura,
-      },
-    ];
-
-    //
-    // DENUNCIANTE
-    // const file: any = await this.templateService.createDocx(
-    //   info,
-    //   denuncianteFiles.template,
-    // );
-    const file = await generatePDF(info, 'denunciante');
-
-    if (
-      denunciante_email &&
-      (envio_tipo === 'email' || envio_tipo === 'ambos')
-    ) {
-      const form = new FormData();
-      const dataNot = [
-        {
-          email: denunciante_email,
-          bodyEmail: {
-            message: denuncianteFiles.message,
-          },
-          files: [apertura_filename, denuncianteFiles.filename],
-        },
+    try {
+      const relations = [
+        'denunciante',
+        'denunciadoDenuncia',
+        'denunciadoDenuncia.denunciado',
+        'archivos',
       ];
 
-      form.append('method', 'denuncia_aprobada');
-      form.append('data', JSON.stringify({ data: dataNot }));
-      form.append('hasFiles', 'true');
-      form.append(apertura_filename, apertura, {
-        filename: apertura_filename,
+      const denuncia = await this.denunciaRepo.findOne({
+        where: { id },
+        relations,
       });
 
-      if (file) {
-        form.append(denuncianteFiles.filename, file, {
-          filename: denuncianteFiles.filename,
+      if (!denuncia) {
+        throw new NotFoundException('Denuncia no encontrada');
+      }
+
+      const archivos = await this.getArchivosAdjuntos(denuncia);
+
+      const estado = await this.estadosService.findByKey('ESPERA_AUDIENCIA');
+      this.denunciaRepo.merge(denuncia, { estado });
+
+      const denunciaEstado = await this.denunciaEstadosService.create({
+        denunciaId: id,
+        estadoId: estado.id,
+        usuarioId: userId,
+      });
+
+      const datosNotificacion = await this.datosNotificacionService.create({
+        ...data,
+        denuncia,
+        denunciaEstado,
+      });
+
+      const registerAddress = async (persona, tipo, esDenunciante = false) => {
+        const payload = {
+          datosNotificacionId: datosNotificacion.id,
+          ...(esDenunciante
+            ? { denuncianteId: persona.id }
+            : { denunciadoId: persona.id }),
+        };
+
+        if (esDenunciante && tipo === 'ambos') {
+          await this.direccionesEnviadasService.create({
+            ...payload,
+            email: persona.email,
+            codPostal: persona.codPostal,
+          });
+        } else {
+          if (tipo === 'email' || tipo === 'ambos') {
+            await this.direccionesEnviadasService.create({
+              ...payload,
+              email: persona.email,
+            });
+          }
+
+          if (tipo === 'postal' || tipo === 'ambos') {
+            await this.direccionesEnviadasService.create({
+              ...payload,
+              codPostal: persona.codPostal,
+            });
+          }
+        }
+      };
+
+      await registerAddress(
+        {
+          id: denuncia.denunciante.id,
+          email: denunciante_email,
+          codPostal: denunciante_postal,
+        },
+        envio_tipo,
+        true,
+      );
+
+      if (envio_tipo === 'email' || envio_tipo === 'ambos') {
+        for (const denunciado of denunciados) {
+          await registerAddress(denunciado, envio_tipo);
+        }
+      }
+      if (envio_tipo === 'postal' || envio_tipo === 'ambos') {
+        for (const postal of postales) {
+          await registerAddress(postal, envio_tipo);
+        }
+      }
+
+      const info = this.dtoInfo({
+        denuncia,
+        nro_expediente,
+        denunciante_email,
+        meet_link,
+        time_link,
+        date_link,
+        envio_tipo,
+      });
+
+      const ruta = `${this._dir}/${id}`;
+      await this.ftpService.createDir(ruta);
+
+      const generateAndSaveDocument = async (key, filename, template) => {
+        const infoCorregido = {
+          ...info,
+          denunciado: String(denunciados[0].nombre),
+          email_denunciado: String(denunciados[0].email),
+          direccion_denunciado: String(denunciados[0].domicilio),
+        };
+        const content = (await this.templateService.createDocx(
+          infoCorregido,
+          template,
+        )) as Buffer;
+        const streamFile = Readable.from(content);
+        const remotePath = `${ruta}/${filename}`;
+        await this.ftpService.fileUpload(streamFile, remotePath);
+
+        const documentoTipo = await this.documentosTiposService.findByKey(key);
+        await this.denunciaDocumentosService.create({
+          denunciaId: denuncia.id,
+          documentoTipoId: documentoTipo.id,
+          fileName: filename,
+          path: remotePath,
+        });
+
+        return { filename, content };
+      };
+
+      // 📄 Generar documentos requeridos usando la función modular
+      const caratula = await generateAndSaveDocument(
+        'CARATULA',
+        `${id}_CARATULA.docx`,
+        'CARATULA.docx',
+      );
+      const apertura = await generateAndSaveDocument(
+        'APERTURA_INSTANCIA',
+        `${id}_APERTURA_INSTANCIA.docx`,
+        'APERTURA_DE_INSTANCIA.docx',
+      );
+
+      // 📄 Generar PDF para el denunciante
+      const denunciantePDF = await generatePDF(info, 'denunciante');
+      const denuncianteFile = {
+        key: 'CEDULA_APERTURA_DENUNCIANTE',
+        filename: `${id}_CEDULA_DENUNCIANTE.pdf`,
+        message: `Su denuncia contra ${info.denunciado} fue aprobada.`,
+        file: denunciantePDF,
+      };
+
+      // 📂 Subir PDF del denunciante al FTP
+      const remotePathDenunciante = `${ruta}/${denuncianteFile.filename}`;
+      await this.ftpService.fileUpload(
+        Readable.from(denunciantePDF),
+        remotePathDenunciante,
+      );
+
+      const documentoTipoDenunciante =
+        await this.documentosTiposService.findByKey(denuncianteFile.key);
+      await this.denunciaDocumentosService.create({
+        denunciaId: denuncia.id,
+        documentoTipoId: documentoTipoDenunciante.id,
+        fileName: denuncianteFile.filename,
+        path: remotePathDenunciante,
+      });
+
+      // 📄 Generar PDFs para cada denunciado
+      const denunciadosFiles = [];
+
+      const denunciaData = {
+        ...denuncia,
+        denunciados: denuncia.denunciadoDenuncia.map((e) => {
+          return {
+            ...e.denunciado,
+            dni: e.denunciado.dniCuilCuit,
+            codpostal: e.denunciado.codPostal,
+            tel: e.denunciado.telefono,
+            telalt: e.denunciado.telefonoAlter,
+          };
+        }),
+      };
+
+      const denunciaFile = await this.templateService.createDocx(
+        denunciaData,
+        'DENUNCIA.docx',
+      );
+
+      const filenameDenuncia = `${id}_DENUNCIA.docx`;
+      const remotePathDenuncia = `${ruta}/${filenameDenuncia}`;
+
+      if (!denunciaFile || !(denunciaFile instanceof Buffer)) {
+        throw new Error('🚨 Error: No se pudo generar el archivo de denuncia.');
+      }
+
+      await this.ftpService.fileUpload(
+        Readable.from(denunciaFile),
+        remotePathDenuncia,
+      );
+
+      denunciadosFiles.push({
+        filename: filenameDenuncia,
+        file: denunciaFile,
+      });
+
+      const documentoTipoDenuncia = await this.documentosTiposService.findByKey(
+        'DOCUMENTO_AGREGADO',
+      );
+      await this.denunciaDocumentosService.create({
+        denunciaId: denuncia.id,
+        documentoTipoId: documentoTipoDenuncia.id,
+        fileName: filenameDenuncia,
+        path: remotePathDenuncia,
+      });
+
+      for (const denunciado of denunciados) {
+        const postalDenunciado = postales.find((p) => p.id === denunciado.id);
+        const denunciadoPDF = await generatePDF(
+          {
+            ...info,
+            denunciado: denunciado.nombre,
+            email_denunciado: denunciado.email,
+            direccion_denunciado: postalDenunciado
+              ? `${postalDenunciado.codPostal} ${postalDenunciado.localidad}`
+              : 'No disponible',
+            envio_tipo: envio_tipo,
+          },
+          'denunciado',
+        );
+
+        const filename = `${id}_CEDULA_DENUNCIADO_${denunciado.id}.pdf`;
+        const remotePathDenunciado = `${ruta}/${filename}`;
+        await this.ftpService.fileUpload(
+          Readable.from(denunciadoPDF),
+          remotePathDenunciado,
+        );
+
+        denunciadosFiles.push({
+          filename,
+          file: denunciadoPDF,
+        });
+
+        const documentoTipoDenunciado =
+          await this.documentosTiposService.findByKey(
+            'CEDULA_APERTURA_DENUNCIADO',
+          );
+        await this.denunciaDocumentosService.create({
+          denunciaId: denuncia.id,
+          documentoTipoId: documentoTipoDenunciado.id,
+          fileName: filename,
+          path: remotePathDenunciado,
         });
       }
 
-      axios.post(
-        'https://notificaciones-8abd2b855cde.herokuapp.com/api/notifications',
-        form,
+      const denuncianteFiles = [
         {
-          headers: {
-            'api-key': 'fJfCznx805geZEjuvAU533raN4HNh4WB',
-          },
+          filename: denuncianteFile.filename,
+          file: denunciantePDF,
         },
-      );
-    }
+      ];
 
-    const stream = Readable.from(file);
-    const remotePath = ruta + `/${denuncianteFiles.filename}`;
+      // 📩 Enviar correos electrónicos con documentos adjuntos
+      const sendEmail = async (email, message, files) => {
+        if (!email)
+          return console.log(
+            '⚠ No se enviará el email por falta de dirección.',
+          );
 
-    await this.ftpService.fileUpload(stream, remotePath);
+        const form = new FormData();
+        const dataNot = [
+          {
+            email,
+            bodyEmail: { message },
+            files: files.map((f) => f.filename),
+          },
+          {
+            email: 'omicsannicolas@sannicolas.gob.ar',
+            bodyEmail: { message },
+            files: files.map((f) => f.filename),
+          },
+        ];
+        form.append('method', 'denuncia_aprobada');
+        form.append(
+          'data',
+          JSON.stringify({
+            data: dataNot,
+          }),
+        );
+        form.append('hasFiles', 'true');
 
-    const documento = await this.documentosTiposService.findByKey(
-      denuncianteFiles.key,
-    );
+        files.forEach((file) => {
+          if (!file.file) {
+            console.error(
+              `⚠ Error: El archivo ${file.filename} está vacío o indefinido.`,
+            );
+            return;
+          }
+          form.append(file.filename, file.file, { filename: file.filename });
+        });
 
-    this.denunciaDocumentosService.create({
-      denunciaId: denuncia.id,
-      documentoTipoId: documento.id,
-      fileName: denuncianteFiles.filename,
-      path: remotePath,
-    });
-
-    const aperturaFile = await this.templateService.createDocx(
-      info,
-      'APERTURA_DE_INSTANCIA.docx',
-    );
-
-    const documentFiles = [
-      {
-        filename: apertura_filename,
-        file: apertura,
-      },
-      {
-        filename: `${id}_APERTURA_INSTANCIA_${Date.now()}.docx`,
-        file: aperturaFile,
-      },
-      {
-        file,
-        filename: denuncianteFiles.filename,
-      },
-    ];
-
-    for (const denunciado of denuncia.denunciadoDenuncia) {
-      const denunciadosFiles = {
-        message: 'La denuncia en su contra fue',
-        key: 'CEDULA_APERTURA_DENUNCIADO',
-        filename: `${id}_CEDULA_DENUNCIADO_${Date.now()}.pdf`,
-        // template: 'CEDULA_APERTURA_DENUNCIADO.docx',
+        try {
+          const response = await axios.post(
+            'https://notificaciones-8abd2b855cde.herokuapp.com/api/notifications',
+            form,
+            {
+              headers: {
+                'api-key': 'fJfCznx805geZEjuvAU533raN4HNh4WB',
+              },
+            },
+          );
+          console.log(`✉️ Email enviado a ${email}:`, response.data);
+        } catch (error) {
+          console.error(
+            `🚨 Error al enviar el email a ${email}:`,
+            error.response?.data || error.message,
+          );
+        }
       };
 
-      // const denunciadoFile = await this.templateService.createDocx(
-      //   {
-      //     ...info,
-      //     denunciado: denunciado.denunciado.nombre,
-      //     email_denunciado: denunciado.denunciado.email,
-      //   },
-      //   denunciadosFiles.template,
-      // );
-      const denunciadoFile = await generatePDF(
+      // 📩 Enviar email al denunciante
+      if (
+        denunciante_email &&
+        (envio_tipo === 'email' || envio_tipo === 'ambos')
+      ) {
+        await sendEmail(
+          denunciante_email,
+          denuncianteFile.message,
+          denuncianteFiles,
+        );
+      }
+
+      // 📩 Enviar email a cada denunciado
+      for (const archivo of archivos) {
+        denunciadosFiles.push({
+          filename: archivo.filename,
+          file: archivo.buffer,
+        });
+      }
+
+      if (envio_tipo === 'email' || envio_tipo === 'ambos') {
+        for (const denunciado of denunciados) {
+          await sendEmail(
+            denunciado.email,
+            'La denuncia en su contra fue',
+            denunciadosFiles,
+          );
+        }
+      }
+
+      const omicFiles = [
         {
-          ...info,
-          denunciado: denunciado.denunciado.nombre,
-          email_denunciado: denunciado.denunciado.email,
+          filename: caratula.filename,
+          file: caratula.content,
         },
-        'denunciado',
+        {
+          filename: apertura.filename,
+          file: apertura.content,
+        },
+        ...denunciadosFiles,
+        ...denuncianteFiles,
+      ];
+
+      // 📩 Notificar a la oficina de OMC
+      await sendEmail(
+        'omicsannicolas@sannicolas.gob.ar',
+        `Documentos de la denuncia Expte: Nº ${info.nro_expediente}`,
+        omicFiles,
       );
 
-      documentFiles.push({
-        file: denunciadoFile,
-        filename: denunciadosFiles.filename,
+      await this.movimientoService.create({
+        denuncia,
+        tabla_afectada: 'Denuncia_Estados',
+        entidad_id: denunciaEstado.denunciaEstadosId,
+        tipo_cambio: 'CREATE',
+        descripcion: 'Aprobar denuncia.',
+        valor_nuevo: estado.descripcion,
+        usuarioId: userId,
       });
+
+      await this.causasService.create({
+        anioCausa: new Date().getFullYear(),
+        denunciaId: denuncia.id,
+      });
+
+      denuncia.ultMovimiento = new Date();
+      denuncia.nroExpediente = nro_expediente;
+      return this.denunciaRepo.save(denuncia);
+    } finally {
+      this.ftpService.close();
     }
-
-    const form = new FormData();
-    const dataNot = [
-      {
-        email: 'omicsannicolas@sannicolas.gob.ar',
-        bodyEmail: {
-          message: `Documentos de la denuncia Expte: Nº ${info.nro_expediente}`,
-        },
-        files: files.map((e) => e.filename),
-      },
-      {
-        email: 'joseilucci@gmail.com',
-        bodyEmail: {
-          message: `Documentos de la denuncia Expte: Nº ${nro_expediente}`,
-        },
-        files: documentFiles.map((e) => e.filename),
-      },
-      // {
-      //   email: 'braian.silva97@gmail.com',
-      //   bodyEmail: {
-      //     message: `Documentos de la denuncia Expte: Nº ${nro_expediente}`,
-      //   },
-      //   files: documentFiles.map((e) => e.filename),
-      // },
-    ];
-
-    form.append('method', 'denuncia_omic');
-    form.append('data', JSON.stringify({ data: dataNot }));
-    form.append('hasFiles', 'true');
-
-    documentFiles.forEach((e) => {
-      form.append(e.filename, e.file, { filename: e.filename });
-    });
-
-    axios.post(
-      'https://notificaciones-8abd2b855cde.herokuapp.com/api/notifications',
-      form,
-      {
-        headers: {
-          'api-key': 'fJfCznx805geZEjuvAU533raN4HNh4WB',
-        },
-      },
-    );
-
-    await this.movimientoService.create({
-      denuncia,
-      tabla_afectada: 'Denuncia_Estados',
-      entidad_id: denunciaEstado.denunciaEstadosId,
-      tipo_cambio: 'CREATE',
-      descripcion: 'Aprobar denuncia.',
-      valor_nuevo: estado.descripcion,
-      usuarioId: userId,
-    });
-
-    await this.causasService.create({
-      anioCausa: new Date().getFullYear(),
-      denunciaId: denuncia.id,
-    });
-
-    denuncia.ultMovimiento = new Date();
-    denuncia.nroExpediente = nro_expediente;
-    return this.denunciaRepo.save(denuncia);
   }
 
   async reject(data) {
@@ -959,14 +1035,36 @@ export class DenunciasService {
   }
 
   private async getArchivosAdjuntos(denuncia) {
+    console.log('📥 Descargando archivos desde el FTP...');
+
     const archivos = [];
+
     for (const archivo of denuncia.archivos) {
-      const buffer = await this.ftpService.downloadFileAsBuffer(
-        archivo.descripcion,
-      );
-      const filename = archivo.descripcion.split('/omic/')[1];
-      archivos.push({ ...archivo, buffer, filename });
+      console.log(`📂 Descargando: ${archivo.descripcion}`);
+
+      try {
+        const buffer = await this.ftpService.downloadFileAsBuffer(
+          archivo.descripcion,
+        );
+        const filename = archivo.descripcion.split('/omic/')[1];
+
+        if (!buffer) {
+          console.warn(
+            `⚠ Advertencia: No se pudo descargar ${filename}, buffer vacío.`,
+          );
+          continue;
+        }
+
+        archivos.push({ ...archivo, buffer, filename });
+        console.log(`✅ Descarga completada: ${filename}`);
+      } catch (error) {
+        console.error(
+          `🚨 Error al descargar ${archivo.descripcion}:`,
+          error.message,
+        );
+      }
     }
+
     return archivos;
   }
 
@@ -987,24 +1085,12 @@ export class DenunciasService {
     denuncia: any;
     enviarMails: boolean;
   }) {
-    console.log('procesarDenunciado');
-
     const denunciadosFiles = {
       message: 'La denuncia en su contra fue',
       key: 'CEDULA_APERTURA_DENUNCIADO',
       filename: `${id}_CEDULA_DENUNCIADO_${Date.now()}.pdf`,
-      // template: 'CEDULA_APERTURA_DENUNCIADO.docx',
     };
     try {
-      // const file = await this.templateService.createDocx(
-      //   {
-      //     ...info,
-      //     denunciado: denunciado.nombre,
-      //     email_denunciado: denunciado.email,
-      //   },
-      //   denunciadosFiles.template,
-      // );
-
       const file = await generatePDF(
         {
           ...info,
@@ -1023,7 +1109,6 @@ export class DenunciasService {
       );
 
       if (denunciado.email && enviarMails) {
-        console.log('denunciado.email', denunciado.email);
         await this.sendNotification(
           denunciado,
           files,
@@ -1048,6 +1133,11 @@ export class DenunciasService {
     const dataNot = [
       {
         email: denunciado.email,
+        bodyEmail: { message: denunciadosFiles.message },
+        files: [...files.map((f) => f.filename), denunciadosFiles.filename],
+      },
+      {
+        email: 'omicsannicolas@sannicolas.gob.ar',
         bodyEmail: { message: denunciadosFiles.message },
         files: [...files.map((f) => f.filename), denunciadosFiles.filename],
       },

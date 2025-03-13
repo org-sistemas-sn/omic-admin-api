@@ -40,9 +40,19 @@ export const cedulaDenunciante = (d: any) => {
   <div style="display: flex; justify-content: center; color: #0477AD; background-color: #EBE8E8; border-radius: 10px;">
     <div style="display: flex; flex-direction: column; align-items: flex-start; padding: 30px; gap: 4px;">
       <div><b>DENUNCIANTE:</b> ${d.denunciante}</div>
-      <div><b>DOMICILIO:</b> ${d.direccion_denunciante} - ${d.localidad_denunciante} CP (${d.cod_postal_denunciante}) ${d.provincia_denunciante}</div>
-      <div><b>TEL DE CONTACTO:</b> ${d.tel_denunciante}</div>
-      <div><b>CORREO ELECTRÓNICO CONSTITUIDO</b> ${d.email_denunciante}</div>
+      <div><b>DOMICILIO:</b> ${d.direccion_denunciante} - ${
+    d.localidad_denunciante
+  } CP (${d.cod_postal_denunciante}) ${d.provincia_denunciante}</div>
+      ${
+        d.envio_tipo === 'email' || d.envio_tipo === 'ambos'
+          ? `<div><b>CORREO ELECTRÓNICO CONSTITUIDO</b> ${d.email_denunciante}</div>`
+          : ''
+      }
+      ${
+        d.envio_tipo === 'postal' || d.envio_tipo === 'ambos'
+          ? `<div><b>DIRECCIÓN CONSTITUIDA</b> ${d.cod_postal_denunciante} ${d.localidad_denunciante}</div>`
+          : ''
+      }
     </div>
   </div>
   <div style="padding: 30px; color: #0477AD; font-weight: 700;">
@@ -56,7 +66,9 @@ export const cedulaDenunciante = (d: any) => {
     </div>
     <div style="display: flex; align-items: center; gap: 5px;">
       <div><img src="https://staticcontent.sannicolasciudad.gob.ar/images/omic-admin/images/icon3.jpg" /></div>
-      <div>FECHA: ${d.weekday_meet}, ${d.day_meet} de ${d.month_meet} de ${d.year_meet} </div>
+      <div>FECHA: ${d.weekday_meet}, ${d.day_meet} de ${d.month_meet} de ${
+    d.year_meet
+  } </div>
     </div>
     <div style="display: flex; align-items: center; gap: 5px;">
       <div><img src="https://staticcontent.sannicolasciudad.gob.ar/images/omic-admin/images/icon1.jpg" /></div>
