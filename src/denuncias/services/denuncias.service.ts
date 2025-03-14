@@ -437,13 +437,17 @@ export class DenunciasService {
       );
 
       if (envio_tipo === 'email' || envio_tipo === 'ambos') {
-        for (const denunciado of denunciados) {
-          await registerAddress(denunciado, envio_tipo);
+        if (denunciados && denunciados.length > 0) {
+          for (const denunciado of denunciados) {
+            await registerAddress(denunciado, envio_tipo);
+          }
         }
       }
       if (envio_tipo === 'postal' || envio_tipo === 'ambos') {
-        for (const postal of postales) {
-          await registerAddress(postal, envio_tipo);
+        if (postales && postales.length > 0) {
+          for (const postal of postales) {
+            await registerAddress(postal, envio_tipo);
+          }
         }
       }
 
@@ -463,9 +467,15 @@ export class DenunciasService {
       const generateAndSaveDocument = async (key, filename, template) => {
         const infoCorregido = {
           ...info,
-          denunciado: String(denunciados[0].nombre),
-          email_denunciado: String(denunciados[0].email),
-          direccion_denunciado: String(denunciados[0].domicilio),
+          denunciado: String(
+            denunciados[0]?.nombre || postales[0]?.nombre || '',
+          ),
+          email_denunciado: String(
+            denunciados[0]?.email || postales[0]?.email || '',
+          ),
+          direccion_denunciado: String(
+            postales[0]?.domicilio || denunciados[0]?.domicilio || '',
+          ),
         };
         const content = (await this.templateService.createDocx(
           infoCorregido,
@@ -571,7 +581,9 @@ export class DenunciasService {
         path: remotePathDenuncia,
       });
 
-      for (const denunciado of denunciados) {
+      const listaDenunciados = denunciados.length > 0 ? denunciados : postales;
+
+      for (const denunciado of listaDenunciados) {
         const postalDenunciado = postales.find((p) => p.id === denunciado.id);
         const denunciadoPDF = await generatePDF(
           {
