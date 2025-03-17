@@ -86,7 +86,7 @@ export const comprobanteNotificacion = (d: any) => {
   </div>
 
   ${
-    d.documentos && d.documento.length > 0
+    d.documentos && d.documentos.length > 0
       ? `
       <div class="document">
         <div class="document-info">
