@@ -35,14 +35,14 @@ export class CausasController {
     return this.causasService.createCauses();
   }
 
-  @Get('/archivos')
-  denunciaArchivos(@Param() param: any) {
-    return this.causasService.archivos(param.id);
+  @Get('/archivos/:id')
+  denunciaArchivos(@Param('id') id: number) {
+    return this.causasService.archivos(id);
   }
 
-  @Get('/documentos')
-  denunciaDocumentos(@Param() param: any) {
-    return this.causasService.documentos(param.id);
+  @Get('/documentos/:id')
+  denunciaDocumentos(@Param('id') id: number) {
+    return this.causasService.documentos(id);
   }
 
   @Get(':id')

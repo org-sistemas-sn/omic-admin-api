@@ -1793,7 +1793,7 @@ export class DenunciasService {
               {
                 name: fileName,
                 weight: (() => {
-                  const sizeInBytes = file.length;
+                  const sizeInBytes = file.buffer.length;
                   if (sizeInBytes < 1024) {
                     return `${sizeInBytes} B`;
                   } else if (sizeInBytes < 1024 * 1024) {
@@ -1829,7 +1829,7 @@ export class DenunciasService {
                 {
                   name: fileName,
                   weight: (() => {
-                    const sizeInBytes = file.length;
+                    const sizeInBytes = file.buffer.length;
                     if (sizeInBytes < 1024) {
                       return `${sizeInBytes} B`;
                     } else if (sizeInBytes < 1024 * 1024) {
@@ -2019,7 +2019,7 @@ export class DenunciasService {
               {
                 name: fileName,
                 weight: (() => {
-                  const sizeInBytes = file.length;
+                  const sizeInBytes = file.buffer.length;
                   if (sizeInBytes < 1024) {
                     return `${sizeInBytes} B`;
                   } else if (sizeInBytes < 1024 * 1024) {
@@ -2054,7 +2054,8 @@ export class DenunciasService {
                 {
                   name: fileName,
                   weight: (() => {
-                    const sizeInBytes = file.length;
+                    const sizeInBytes = file.buffer.length;
+
                     if (sizeInBytes < 1024) {
                       return `${sizeInBytes} B`;
                     } else if (sizeInBytes < 1024 * 1024) {
