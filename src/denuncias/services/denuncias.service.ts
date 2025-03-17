@@ -513,7 +513,7 @@ export class DenunciasService {
       const denuncianteFile = {
         key: 'CEDULA_APERTURA_DENUNCIANTE',
         filename: `${id}_CEDULA_DENUNCIANTE.pdf`,
-        message: `Su denuncia contra ${info.denunciado} fue aprobada.`,
+        message: `Su denuncia contra ${info.denunciado} fue`,
         file: denunciantePDF,
       };
 
@@ -629,12 +629,47 @@ export class DenunciasService {
         },
       ];
 
+      const emailsEnviados = [];
+
       // 📩 Enviar correos electrónicos con documentos adjuntos
-      const sendEmail = async (email, message, files) => {
+      const sendEmail = async (
+        email,
+        message,
+        files,
+        id?: number,
+        key?: string,
+      ) => {
         if (!email)
           return console.log(
             '⚠ No se enviará el email por falta de dirección.',
           );
+
+        function formatFechaHora(fecha) {
+          const meses = [
+            'Enero',
+            'Febrero',
+            'Marzo',
+            'Abril',
+            'Mayo',
+            'Junio',
+            'Julio',
+            'Agosto',
+            'Septiembre',
+            'Octubre',
+            'Noviembre',
+            'Diciembre',
+          ];
+
+          const dia = fecha.getDate();
+          const mes = meses[fecha.getMonth()];
+          const año = fecha.getFullYear();
+
+          const horas = fecha.getHours().toString().padStart(2, '0');
+          const minutos = fecha.getMinutes().toString().padStart(2, '0');
+          const segundos = fecha.getSeconds().toString().padStart(2, '0');
+
+          return `${dia} ${mes} ${año} at ${horas}:${minutos}:${segundos}`;
+        }
 
         const form = new FormData();
         const dataNot = [
@@ -678,6 +713,37 @@ export class DenunciasService {
               },
             },
           );
+          if (email !== 'omicsannicolas@sannicolas.gob.ar') {
+            emailsEnviados.push({
+              id,
+              key,
+              email,
+              message:
+                message === 'La denuncia en su contra fue' ||
+                message === denuncianteFile.message
+                  ? `${message}: Aprobada`
+                  : message,
+              fechaHora: formatFechaHora(new Date()),
+              documentos: files.map((f) => {
+                const sizeInBytes = f.file.length;
+                let weight: string;
+
+                if (sizeInBytes < 1024) {
+                  weight = `${sizeInBytes} B`;
+                } else if (sizeInBytes < 1024 * 1024) {
+                  weight = `${(sizeInBytes / 1024).toFixed(2)} KB`;
+                } else {
+                  weight = `${(sizeInBytes / (1024 * 1024)).toFixed(2)} MB`;
+                }
+
+                return {
+                  name: f.filename,
+                  weight,
+                };
+              }),
+            });
+          }
+
           console.log(`✉️ Email enviado a ${email}:`, response.data);
         } catch (error) {
           console.error(
@@ -696,6 +762,8 @@ export class DenunciasService {
           denunciante_email,
           denuncianteFile.message,
           denuncianteFiles,
+          7,
+          'COMPROBANTE_NOTIFICACION_DENUNCIANTE',
         );
       }
 
@@ -713,6 +781,8 @@ export class DenunciasService {
             denunciado.email,
             'La denuncia en su contra fue',
             denunciadosFiles,
+            8,
+            'COMPROBANTE_NOTIFICACION_DENUNCIADO',
           );
         }
       }
@@ -736,6 +806,28 @@ export class DenunciasService {
         `Documentos de la denuncia Expte: Nº ${info.nro_expediente}`,
         omicFiles,
       );
+
+      console.log('📄 Documentos generados y enviados correctamente.');
+      console.log('📧 Correos electrónicos enviados correctamente.');
+
+      for (const email of emailsEnviados) {
+        console.log(
+          `📧 Email enviado a ${email.email} (${email.fechaHora}):`,
+          email.message,
+          email.key,
+        );
+        const pdf = await generatePDF(email, 'notificacion');
+        const filename = `${email.key}_${email.email.split('@')[0]}.pdf`;
+        const remotePath = `${ruta}/${filename}`;
+        await this.ftpService.fileUpload(Readable.from(pdf), remotePath);
+
+        await this.denunciaDocumentosService.create({
+          denunciaId: denuncia.id,
+          documentoTipoId: email.id,
+          fileName: filename,
+          path: remotePath,
+        });
+      }
 
       await this.movimientoService.create({
         denuncia,

@@ -2,14 +2,23 @@ import * as fs from 'fs';
 import * as puppeteer from 'puppeteer';
 import { cedulaDenunciante } from './cedulaDenunciante';
 import { cedulaDenunciado } from './cedulaDenunciado';
+import { comprobanteNotificacion } from './comprobanteNotificacion';
 
 export const generatePDF = async (info: any, tipo: string) => {
   let htmlContent = '';
 
-  if (tipo === 'denunciante') {
-    htmlContent = cedulaDenunciante(info);
-  } else {
-    htmlContent = cedulaDenunciado(info);
+  switch (tipo) {
+    case 'denunciante':
+      htmlContent = cedulaDenunciante(info);
+      break;
+    case 'denunciado':
+      htmlContent = cedulaDenunciado(info);
+      break;
+    case 'notificacion':
+      htmlContent = comprobanteNotificacion(info);
+      break;
+    default:
+      throw new Error(`Tipo de documento desconocido: ${tipo}`);
   }
 
   try {
@@ -26,27 +35,31 @@ export const generatePDF = async (info: any, tipo: string) => {
     await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
 
     // Esperar a que las imágenes se carguen antes de generar el PDF
-    await page.evaluate(() => {
-      return new Promise((resolve) => {
-        const images = Array.from(document.images);
-        let loaded = 0;
-        images.forEach((img) => {
-          if (img.complete) {
-            loaded++;
-            if (loaded === images.length) resolve(null);
-          } else {
-            img.onload = () => {
+    const hasImages = await page.evaluate(() => document.images.length > 0);
+
+    if (hasImages) {
+      await page.evaluate(() => {
+        return new Promise((resolve) => {
+          const images = Array.from(document.images);
+          let loaded = 0;
+          images.forEach((img) => {
+            if (img.complete) {
               loaded++;
               if (loaded === images.length) resolve(null);
-            };
-            img.onerror = () => {
-              loaded++;
-              if (loaded === images.length) resolve(null);
-            };
-          }
+            } else {
+              img.onload = () => {
+                loaded++;
+                if (loaded === images.length) resolve(null);
+              };
+              img.onerror = () => {
+                loaded++;
+                if (loaded === images.length) resolve(null);
+              };
+            }
+          });
         });
       });
-    });
+    }
 
     const pdfBuffer = await page.pdf({
       format: 'A4',
