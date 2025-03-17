@@ -1789,7 +1789,7 @@ export class DenunciasService {
             expte: `Expte.: ${nroExpediente} Presunta Infracción Ley 24.240`,
             message: message,
             saludos: true,
-            documents: [
+            documentos: [
               {
                 name: fileName,
                 weight: (() => {
@@ -1825,7 +1825,7 @@ export class DenunciasService {
               expte: `Expte.: ${nroExpediente} Presunta Infracción Ley 24.240`,
               message: message,
               saludos: true,
-              documents: [
+              documentos: [
                 {
                   name: fileName,
                   weight: (() => {
@@ -2015,7 +2015,7 @@ export class DenunciasService {
             expte: `Expte.: ${nroExpediente} Presunta Infracción Ley 24.240`,
             message: message,
             saludos: true,
-            documents: [
+            documentos: [
               {
                 name: fileName,
                 weight: (() => {
@@ -2050,7 +2050,7 @@ export class DenunciasService {
               expte: `Expte.: ${nroExpediente} Presunta Infracción Ley 24.240`,
               message: message,
               saludos: true,
-              documents: [
+              documentos: [
                 {
                   name: fileName,
                   weight: (() => {
