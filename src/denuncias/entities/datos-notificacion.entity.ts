@@ -26,6 +26,9 @@ export class DatosNotificacion {
   @Column({ type: 'varchar', length: 255, nullable: true })
   documentPath: string;
 
+  @Column({ type: 'json', nullable: true, default: [] })
+  comprobantes_notificacion: any[];
+
   @OneToOne(() => DenunciaEstados, (d) => d.datosNotificacion)
   @JoinColumn({ name: 'id_denuncia_estado' })
   denunciaEstado: DenunciaEstados;

@@ -79,18 +79,29 @@ export const comprobanteNotificacion = (d: any) => {
     <p>Notificación de Oficina Municipal de Informacion al Consumidor (OMIC)</p>
   </div>
   <div class="content">
+    ${d.expte ? `<p><strong>Expte:</strong> ${d.expte}</p>` : ''}
     <p>${d.message}</p>
+    ${d.motivo ? `<p>${d.motivo}</p>` : ''}
+    ${d.saludos ? `<p>Saludos cordiales</p>` : ''}
   </div>
 
-  <div class="document">
-    <div class="document-info">
-      ${d.documentos
-        .map(
-          (doc: any) => `<p><strong>${doc.name}</strong> - ${doc.weight}</p>`,
-        )
-        .join('')}
-    </div>
-  </div>
+  ${
+    d.documentos && d.documento.length > 0
+      ? `
+      <div class="document">
+        <div class="document-info">
+          ${d.documentos
+            .map(
+              (doc: any) =>
+                `<p><strong>${doc.name}</strong> - ${doc.weight}</p>`,
+            )
+            .join('')}
+        </div>
+      </div>
+    `
+      : ''
+  }
+
   <div class="footer">
     <p>*Documento generado a partir del sistema OMIC-ADMIN</p>
   </div>

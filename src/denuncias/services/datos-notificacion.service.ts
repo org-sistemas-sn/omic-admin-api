@@ -20,6 +20,7 @@ export class DatosNotificacionService {
     meet_link,
     documentPath,
     id_usuario,
+    comprobantes_notificacion,
   }: {
     denuncia: Denuncia;
     denunciaEstado: DenunciaEstados;
@@ -27,6 +28,7 @@ export class DatosNotificacionService {
     meet_link: string;
     documentPath?: string;
     id_usuario?: number;
+    comprobantes_notificacion?: any[];
   }) {
     const newDenounced = this.datosNotificacionRepo.create({
       denuncia,
@@ -35,6 +37,7 @@ export class DatosNotificacionService {
       meet_link,
       documentPath: documentPath || null,
       id_usuario,
+      comprobantes_notificacion: comprobantes_notificacion || [],
     });
 
     return await this.datosNotificacionRepo.save(newDenounced);
