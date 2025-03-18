@@ -941,7 +941,7 @@ export class DenunciasService {
       }
 
       emailEnviados.push({
-        id: 8,
+        id: 7,
         key: 'COMPROBANTE_NOTIFICACION_DENUNCIANTE',
         email: denunciante_email,
         message: `Su denuncia contra ${`${denuncia.denunciadoDenuncia[0].denunciado.nombre}`} fue: Rechazada`,
