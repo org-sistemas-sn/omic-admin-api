@@ -581,7 +581,41 @@ export class DenunciasService {
         path: remotePathDenuncia,
       });
 
-      const listaDenunciados = denunciados.length > 0 ? denunciados : postales;
+      const fusionarDenunciadosYPostales = (
+        denunciados: any[],
+        postales: any[],
+      ) => {
+        const mapa = new Map();
+
+        denunciados.forEach((denunciado) => {
+          mapa.set(denunciado.id, {
+            ...denunciado,
+            tipoEnvioArray: 'email',
+          });
+        });
+
+        postales.forEach((postal) => {
+          if (mapa.has(postal.id)) {
+            const existente = mapa.get(postal.id);
+            mapa.set(postal.id, {
+              ...existente,
+              codPostal: postal.codPostal,
+              tipoEnvioArray: 'ambos',
+            });
+          } else {
+            mapa.set(postal.id, { ...postal, tipoEnvioArray: 'postal' });
+          }
+        });
+
+        return Array.from(mapa.values());
+      };
+
+      const listaDenunciados = fusionarDenunciadosYPostales(
+        denunciados,
+        postales,
+      );
+
+      console.log('listaDenunciados', listaDenunciados);
 
       for (const denunciado of listaDenunciados) {
         const postalDenunciado = postales.find((p) => p.id === denunciado.id);
@@ -589,10 +623,16 @@ export class DenunciasService {
           {
             ...info,
             denunciado: denunciado.nombre,
-            email_denunciado: denunciado.email,
-            direccion_denunciado: postalDenunciado
-              ? `${postalDenunciado.codPostal} ${postalDenunciado.localidad}`
-              : 'No disponible',
+            email_denunciado:
+              denunciado.tipoEnvioArray === 'email' ||
+              denunciado.tipoEnvioArray === 'ambos'
+                ? denunciado.email
+                : 'No disponible',
+            direccion_denunciado:
+              denunciado.tipoEnvioArray === 'postal' ||
+              denunciado.tipoEnvioArray === 'ambos'
+                ? `${postalDenunciado.codPostal} ${postalDenunciado.localidad}`
+                : 'No disponible',
             envio_tipo: envio_tipo,
           },
           'denunciado',
@@ -606,6 +646,7 @@ export class DenunciasService {
         );
 
         denunciadosFiles.push({
+          idDenunciado: denunciado.id,
           filename,
           file: denunciadoPDF,
         });
@@ -674,12 +715,15 @@ export class DenunciasService {
         const form = new FormData();
         const dataNot = [
           {
+            subject: `EXPEDIENTE: ${nro_expediente}/${denuncia.denunciante.apellido
+              .charAt(0)
+              .toUpperCase()}/${new Date().getFullYear()}/${
+              denuncia.denunciante.nombre.toUpperCase() +
+              ' ' +
+              denuncia.denunciante.apellido.toUpperCase()
+            } C/ ${denuncia.denunciadoDenuncia[0].denunciado.nombre.toUpperCase()} S/ PRESUNTA INFRACCIÓN A LA LEY 24.240`,
             email,
-            bodyEmail: { message },
-            files: files.map((f) => f.filename),
-          },
-          {
-            email: 'omicsannicolas@sannicolas.gob.ar',
+            cc: 'omicsannicolas@sannicolas.gob.ar',
             bodyEmail: { message },
             files: files.map((f) => f.filename),
           },
@@ -705,7 +749,7 @@ export class DenunciasService {
 
         try {
           const response = await axios.post(
-            'https://notificaciones-8abd2b855cde.herokuapp.com/api/notifications',
+            'https://notificaciones-8abd2b855cde.herokuapp.com/api/notifications/notifications-email',
             form,
             {
               headers: {
@@ -777,10 +821,14 @@ export class DenunciasService {
 
       if (envio_tipo === 'email' || envio_tipo === 'ambos') {
         for (const denunciado of denunciados) {
+          const denunciadoFilesFiltered = denunciadosFiles.filter(
+            (f) => f.idDenunciado === denunciado.id || !f.idDenunciado,
+          );
+
           await sendEmail(
             denunciado.email,
             'La denuncia en su contra fue',
-            denunciadosFiles,
+            denunciadoFilesFiltered,
             8,
             'COMPROBANTE_NOTIFICACION_DENUNCIADO',
           );
@@ -904,7 +952,7 @@ export class DenunciasService {
       };
 
       axios.post(
-        'https://notificaciones-8abd2b855cde.herokuapp.com/api/notifications',
+        'https://notificaciones-8abd2b855cde.herokuapp.com/api/notifications/notifications-email',
         dataNot,
         {
           headers: {
@@ -1329,7 +1377,7 @@ export class DenunciasService {
     });
     console.log('dataNot', dataNot);
     return axios.post(
-      'https://notificaciones-8abd2b855cde.herokuapp.com/api/notifications',
+      'https://notificaciones-8abd2b855cde.herokuapp.com/api/notifications/notifications-email',
       form,
       {
         headers: { 'api-key': 'fJfCznx805geZEjuvAU533raN4HNh4WB' },
@@ -1851,7 +1899,7 @@ export class DenunciasService {
 
         try {
           const response = await axios.post(
-            'https://notificaciones-8abd2b855cde.herokuapp.com/api/notifications',
+            'https://notificaciones-8abd2b855cde.herokuapp.com/api/notifications/notifications-email',
             form,
             {
               headers: {
@@ -2077,7 +2125,7 @@ export class DenunciasService {
 
         try {
           const response = await axios.post(
-            'https://notificaciones-8abd2b855cde.herokuapp.com/api/notifications',
+            'https://notificaciones-8abd2b855cde.herokuapp.com/api/notifications/notifications-email',
             form,
             {
               headers: {
