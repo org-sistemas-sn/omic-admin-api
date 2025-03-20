@@ -393,6 +393,7 @@ export class DenunciasService {
         ...data,
         denuncia,
         denunciaEstado,
+        id_usuario: userId,
       });
 
       const registerAddress = async (persona, tipo, esDenunciante = false) => {
