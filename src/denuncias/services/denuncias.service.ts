@@ -942,6 +942,11 @@ export class DenunciasService {
         method: 'denuncia_rechazada',
         data: [
           {
+            subject: `DENUNCIA: ${new Date().getFullYear()}/${
+              denuncia.denunciante.nombre.toUpperCase() +
+              ' ' +
+              denuncia.denunciante.apellido.toUpperCase()
+            } C/ ${denuncia.denunciadoDenuncia[0].denunciado.nombre.toUpperCase()} S/ PRESUNTA INFRACCIÓN A LA LEY 24.240`,
             email: denunciante_email,
             bodyEmail: {
               message: `Su denuncia contra ${`${denuncia.denunciadoDenuncia[0].denunciado.nombre}`} fue:`,
@@ -1809,7 +1814,7 @@ export class DenunciasService {
         const ruta = `${this._dir}/${id}`;
         await this.ftpService.createDir(ruta);
 
-        const fileName = `${id}_cambio_estado_${estado.key}_${Date.now()}.pdf`;
+        const fileName = `${id}_CAMBIO_ESTADO_${estado.key}_${Date.now()}.pdf`;
         const remotePath = `${ruta}/${fileName}`;
 
         const streamFile = Readable.from(file.buffer);
@@ -1822,6 +1827,13 @@ export class DenunciasService {
 
         if (denunciante.email) {
           emailsToSend.push({
+            subject: `EXPEDIENTE: ${nroExpediente}/${denunciante.apellido
+              .charAt(0)
+              .toUpperCase()}/${new Date().getFullYear()}/${
+              denunciante.nombre.toUpperCase() +
+              ' ' +
+              denunciante.apellido.toUpperCase()
+            } C/ ${denuncia.denunciadoDenuncia[0].denunciado.nombre.toUpperCase()} S/ PRESUNTA INFRACCIÓN A LA LEY 24.240`,
             email: denunciante.email,
             bodyEmail: {
               message: message,
@@ -1858,6 +1870,13 @@ export class DenunciasService {
         denunciados.forEach((denunciado) => {
           if (denunciado.email) {
             emailsToSend.push({
+              subject: `EXPEDIENTE: ${nroExpediente}/${denunciante.apellido
+                .charAt(0)
+                .toUpperCase()}/${new Date().getFullYear()}/${
+                denunciante.nombre.toUpperCase() +
+                ' ' +
+                denunciante.apellido.toUpperCase()
+              } C/ ${denuncia.denunciadoDenuncia[0].denunciado.nombre.toUpperCase()} S/ PRESUNTA INFRACCIÓN A LA LEY 24.240`,
               email: denunciado.email,
               bodyEmail: {
                 message: message,
@@ -2049,6 +2068,13 @@ export class DenunciasService {
 
         if (denunciante.email) {
           emailsToSend.push({
+            subject: `EXPEDIENTE: ${nroExpediente}/${denunciante.apellido
+              .charAt(0)
+              .toUpperCase()}/${new Date().getFullYear()}/${
+              denunciante.nombre.toUpperCase() +
+              ' ' +
+              denunciante.apellido.toUpperCase()
+            } C/ ${denuncia.denunciadoDenuncia[0].denunciado.nombre.toUpperCase()} S/ PRESUNTA INFRACCIÓN A LA LEY 24.240`,
             email: denunciante.email,
             bodyEmail: {
               message: message,
@@ -2084,6 +2110,13 @@ export class DenunciasService {
         denunciados.forEach((denunciado) => {
           if (denunciado.email) {
             emailsToSend.push({
+              subject: `EXPEDIENTE: ${nroExpediente}/${denunciante.apellido
+                .charAt(0)
+                .toUpperCase()}/${new Date().getFullYear()}/${
+                denunciante.nombre.toUpperCase() +
+                ' ' +
+                denunciante.apellido.toUpperCase()
+              } C/ ${denuncia.denunciadoDenuncia[0].denunciado.nombre.toUpperCase()} S/ PRESUNTA INFRACCIÓN A LA LEY 24.240`,
               email: denunciado.email,
               bodyEmail: {
                 message: message,
