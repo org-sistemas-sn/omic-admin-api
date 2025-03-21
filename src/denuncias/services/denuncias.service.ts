@@ -1599,6 +1599,8 @@ export class DenunciasService {
 
   async adjuntarDocumentacion(data, file) {
     const { id, name, userId } = data;
+    console.log('data', data);
+    console.log('file', file);
 
     const denuncia = await this.getDenuncia(id);
 
