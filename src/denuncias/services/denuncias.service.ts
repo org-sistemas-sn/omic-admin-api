@@ -48,7 +48,7 @@ import { ConfigType } from '@nestjs/config';
 export class DenunciasService {
   private _dir = process.env.FTP_FOLDER || '/images/omic-admin-dev/causas';
   private _dirRechazadas =
-    process.env.FTP_FOLDER || '/images/omic-admin-dev/rechazadas';
+    process.env.FTP_FOLDER_RECHAZADAS || '/images/omic-admin-dev/rechazadas';
   private readonly startDateDenuncia: string;
   constructor(
     @InjectRepository(Denuncia) private denunciaRepo: Repository<Denuncia>,
@@ -1011,7 +1011,7 @@ export class DenunciasService {
       const filename = `${email.key}_${
         email.email.split('@')[0]
       }_RECHAZADO.pdf`;
-      const remoteDir = `${this._dir}/${id}`;
+      const remoteDir = `${this._dirRechazadas}/${id}`;
       await this.ftpService.createDir(remoteDir);
       const remotePath = `${remoteDir}/${filename}`;
       await this.ftpService.fileUpload(Readable.from(pdf), remotePath);
