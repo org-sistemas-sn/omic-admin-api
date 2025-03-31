@@ -22,77 +22,78 @@ export const generatePDF = async (info: any, tipo: string) => {
   }
 
   try {
+    console.log(':rocket: Iniciando Puppeteer...');
+
     const browser = await puppeteer.launch({
       executablePath: process.env.CHROME_PATH || '/usr/bin/chromium-browser',
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
-        '--single-process',
+        '--disable-accelerated-2d-canvas',
         '--disable-gpu',
         '--no-zygote',
+        '--disable-software-rasterizer',
+        '--single-process',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-renderer-backgrounding',
       ],
       protocolTimeout: 60000,
       headless: true,
     });
-    const page = await browser.newPage();
 
-    // Configuración mejorada de espera
+    console.log(':white_check_mark: Puppeteer iniciado correctamente.');
+    console.log(
+      ':small_blue_diamond: Versión de Chromium:',
+      await browser.version(),
+    );
+
+    const page = await browser.newPage();
     await page.setDefaultNavigationTimeout(60000);
 
-    // Esperar a que las imágenes se carguen antes de generar el PDF
-    await page
-      .waitForSelector('img', { timeout: 5000 })
-      .catch(() => console.log('No hay imágenes o timeout alcanzado'));
+    console.log(':page_facing_up: Configurando contenido HTML...');
+    await page.setContent(htmlContent, { waitUntil: 'networkidle2' });
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    // await page.setContent(htmlContent, { waitUntil: 'domcontentloaded' });
-
-    // Configurar el contenido HTML en la página
-    await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
-
-    // Esperar a que las imágenes se carguen antes de generar el PDF
+    // Esperar a que las imágenes se carguen completamente
     const hasImages = await page.evaluate(() => document.images.length > 0);
-
     if (hasImages) {
-      await page.evaluate(() => {
-        return new Promise((resolve) => {
-          const images = Array.from(document.images);
-          let loaded = 0;
-          images.forEach((img) => {
-            if (img.complete) {
-              loaded++;
-              if (loaded === images.length) resolve(null);
-            } else {
-              img.onload = () => {
-                loaded++;
-                if (loaded === images.length) resolve(null);
-              };
-              img.onerror = () => {
-                loaded++;
-                if (loaded === images.length) resolve(null);
-              };
-            }
-          });
-        });
-      });
+      console.log(
+        ':frame_with_picture: Esperando que las imágenes se carguen...',
+      );
+      await page.evaluate(() =>
+        Promise.all(
+          Array.from(document.images).map((img) => {
+            if (img.complete) return Promise.resolve();
+            return new Promise((resolve, reject) => {
+              img.onload = resolve;
+              img.onerror = reject;
+            });
+          }),
+        ),
+      );
+      console.log(
+        ':white_check_mark: Todas las imágenes se han cargado correctamente.',
+      );
     }
 
+    console.log(':page_facing_up: Generando PDF...');
     const pdfBuffer = await page.pdf({
       format: 'A4',
       printBackground: true,
     });
 
-    // fs.writeFileSync('output.pdf', pdfBuffer);
+    console.log(':white_check_mark: PDF generado con éxito.');
+
+    // Esperar un poco antes de cerrar el navegador
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
     await browser.close();
-    console.log('📄 Documento PDF generado exitosamente: output.pdf');
+    console.log(':door: Puppeteer cerrado correctamente.');
 
-    const buffer = Buffer.from(pdfBuffer);
-
-    return buffer;
+    return Buffer.from(pdfBuffer);
   } catch (error) {
-    console.error('Error al generar el documento:', error);
+    console.error(':x: Error al generar el PDF:', error);
     throw new Error('No se pudo generar el PDF');
   }
 };
