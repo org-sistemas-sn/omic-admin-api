@@ -23,11 +23,29 @@ export const generatePDF = async (info: any, tipo: string) => {
 
   try {
     const browser = await puppeteer.launch({
-      // executablePath:
-      //   process.env.CHROME_EXECUTABLE_PATH || '/usr/bin/google-chrome-stable',
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      executablePath: process.env.CHROME_PATH || '/usr/bin/chromium-browser',
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--single-process',
+        '--disable-gpu',
+        '--no-zygote',
+      ],
+      protocolTimeout: 60000,
+      headless: true,
     });
     const page = await browser.newPage();
+
+    // Configuración mejorada de espera
+    await page.setDefaultNavigationTimeout(60000);
+
+    // Esperar a que las imágenes se carguen antes de generar el PDF
+    await page
+      .waitForSelector('img', { timeout: 5000 })
+      .catch(() => console.log('No hay imágenes o timeout alcanzado'));
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
     // await page.setContent(htmlContent, { waitUntil: 'domcontentloaded' });
 
@@ -75,5 +93,6 @@ export const generatePDF = async (info: any, tipo: string) => {
     return buffer;
   } catch (error) {
     console.error('Error al generar el documento:', error);
+    throw new Error('No se pudo generar el PDF');
   }
 };
