@@ -689,30 +689,19 @@ export class DenunciasService {
           );
 
         function formatFechaHora(fecha) {
-          const meses = [
-            'Enero',
-            'Febrero',
-            'Marzo',
-            'Abril',
-            'Mayo',
-            'Junio',
-            'Julio',
-            'Agosto',
-            'Septiembre',
-            'Octubre',
-            'Noviembre',
-            'Diciembre',
-          ];
+          const opciones = {
+            timeZone: 'America/Argentina/Buenos_Aires',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+          };
 
-          const dia = fecha.getDate();
-          const mes = meses[fecha.getMonth()];
-          const año = fecha.getFullYear();
+          const fechaArg = fecha.toLocaleString('es-AR', opciones);
 
-          const horas = fecha.getHours().toString().padStart(2, '0');
-          const minutos = fecha.getMinutes().toString().padStart(2, '0');
-          const segundos = fecha.getSeconds().toString().padStart(2, '0');
-
-          return `${dia} ${mes} ${año} at ${horas}:${minutos}:${segundos}`;
+          return fechaArg.replace(',', ' a las');
         }
 
         const form = new FormData();
@@ -970,30 +959,19 @@ export class DenunciasService {
       );
 
       function formatFechaHora(fecha) {
-        const meses = [
-          'Enero',
-          'Febrero',
-          'Marzo',
-          'Abril',
-          'Mayo',
-          'Junio',
-          'Julio',
-          'Agosto',
-          'Septiembre',
-          'Octubre',
-          'Noviembre',
-          'Diciembre',
-        ];
+        const opciones = {
+          timeZone: 'America/Argentina/Buenos_Aires',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        };
 
-        const dia = fecha.getDate();
-        const mes = meses[fecha.getMonth()];
-        const año = fecha.getFullYear();
+        const fechaArg = fecha.toLocaleString('es-AR', opciones);
 
-        const horas = fecha.getHours().toString().padStart(2, '0');
-        const minutos = fecha.getMinutes().toString().padStart(2, '0');
-        const segundos = fecha.getSeconds().toString().padStart(2, '0');
-
-        return `${dia} ${mes} ${año} at ${horas}:${minutos}:${segundos}`;
+        return fechaArg.replace(',', ' a las');
       }
 
       emailEnviados.push({
