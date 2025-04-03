@@ -1736,10 +1736,30 @@ export class DenunciasService {
       where: { id },
       relations,
     });
+
     if (!complaint) {
       throw new NotFoundException();
     }
-    return complaint;
+
+    const documentos = complaint.denunciaDocumentos;
+
+    const filtrados: any[] = [];
+    const tiposFiltrados = new Set();
+
+    for (const doc of documentos) {
+      const tipoId = doc.documentoTipo.id;
+      if ((tipoId === 1 || tipoId === 4) && !tiposFiltrados.has(tipoId)) {
+        filtrados.push(doc);
+        tiposFiltrados.add(tipoId);
+      } else if (tipoId !== 1 && tipoId !== 4) {
+        filtrados.push(doc);
+      }
+    }
+
+    return {
+      ...complaint,
+      denunciaDocumentos: filtrados,
+    };
   }
 
   async findAll({ estado }) {
