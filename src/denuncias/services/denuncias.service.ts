@@ -104,129 +104,79 @@ export class DenunciasService {
         'denunciante',
         'denunciadoDenuncia',
         'denunciadoDenuncia.denunciado',
-        // 'denunciados.empresa',
-        // 'foja',
-        // 'foja.archivos',
-        // 'archivos',
-        // 'denunciaDocumentos',
-        // 'denunciaDocumentos.documentoTipo',
         'denunciaEstados',
       ];
-      if (params) {
-        const where: FindOptionsWhere<Denuncia> = {};
-        const { limit, offset } = params;
-        const {
-          denunciante,
-          dni,
-          email,
-          estado,
-          date,
-          ultMovimiento,
-          orden = 'DESC',
-        } = params;
 
-        if (this.startDateDenuncia) {
-          where.fecha = MoreThanOrEqual(
-            new Date(this.startDateDenuncia.replaceAll('-', '/')),
-          );
-        }
+      if (!params) return this.denunciaRepo.find({ relations });
 
-        // if (nombre && !apellido)
-        //   where.denunciante = { nombre: Like(`%${nombre}%`) };
-        // if (apellido && !nombre)
-        //   where.denunciante = { apellido: Like(`%${apellido}%`) };
-        // if (nombre && apellido)
-        //   where.denunciante = {
-        //     nombre: Like(`%${nombre}%`),
-        //     apellido: Like(`%${apellido}%`),
-        //   };
-        if (date) {
-          where.fecha = new Date(date.replaceAll('-', '/'));
-        }
-        if (ultMovimiento) {
-          const fechaInicio = new Date(ultMovimiento);
-          fechaInicio.setUTCHours(0, 0, 0, 0);
+      const {
+        denunciante,
+        dni,
+        email,
+        estado,
+        date,
+        ultMovimiento,
+        orden = 'DESC',
+        limit,
+        offset,
+      } = params;
 
-          const fechaFin = new Date(ultMovimiento);
-          fechaFin.setUTCHours(23, 59, 59, 999);
+      const where: FindOptionsWhere<Denuncia> = {};
 
-          where.ultMovimiento = Between(fechaInicio, fechaFin);
-        }
-
-        if (denunciante) {
-          const words = denunciante.trim().split(' ');
-          const denuncianteApellido = words.map((e) => {
-            let denuncianteWhere: {
-              apellido: FindOperator<string>;
-              dni?: FindOperator<string>;
-              email?: FindOperator<string>;
-            } = {
-              apellido: Like(`%${e}%`),
-            };
-            if (dni) {
-              denuncianteWhere = { ...denuncianteWhere, dni: Like(`%${dni}%`) };
-            }
-            if (email)
-              denuncianteWhere = {
-                ...denuncianteWhere,
-                email: Like(`%${email}%`),
-              };
-
-            return denuncianteWhere;
-          });
-          const denuncianteNombre = words.map((e) => {
-            let denuncianteWhere: {
-              nombre: FindOperator<string>;
-              dni?: FindOperator<string>;
-              email?: FindOperator<string>;
-            } = {
-              nombre: Like(`%${e}%`),
-            };
-            if (dni) {
-              denuncianteWhere = { ...denuncianteWhere, dni: Like(`%${dni}%`) };
-            }
-            if (email)
-              denuncianteWhere = {
-                ...denuncianteWhere,
-                email: Like(`%${email}%`),
-              };
-
-            return denuncianteWhere;
-          });
-
-          where.denunciante = [...denuncianteApellido, ...denuncianteNombre];
-          // {
-          // nombre: words.map((e) => Like(`%${e}%`)),
-          // apellido: words.map((e) => Like(`%${e}%`)),
-          // };
-        } else {
-          if (dni) where.denunciante = { dni: Like(`%${dni}%`) };
-          if (email) where.denunciante = { email: Like(`%${email}%`) };
-        }
-        // if (fechaInicio) where.createdAt = Like(`%${fechaInicio}%`);
-        // if (estadoGeneral) where.estadoGeneral = estadoGeneral;
-
-        if (estado) {
-          where.estado = Equal(estado);
-        } else {
-          where.estado = In([1, 2, 3]);
-        }
-
-        if (!limit) {
-          return this.denunciaRepo.find({ relations, where });
-        }
-
-        return this.denunciaRepo.find({
-          relations,
-          where,
-          take: limit,
-          skip: offset,
-          order: {
-            id: orden,
-          },
-        });
+      if (date) {
+        const inicio = new Date(date);
+        inicio.setUTCHours(0, 0, 0, 0);
+        const fin = new Date(date);
+        fin.setUTCHours(23, 59, 59, 999);
+        where.fecha = Between(inicio, fin);
+      } else if (this.startDateDenuncia) {
+        where.fecha = MoreThanOrEqual(
+          new Date(this.startDateDenuncia.replaceAll('-', '/')),
+        );
       }
-      return this.denunciaRepo.find({ relations });
+
+      if (ultMovimiento) {
+        const inicio = new Date(ultMovimiento);
+        inicio.setUTCHours(0, 0, 0, 0);
+        const fin = new Date(ultMovimiento);
+        fin.setUTCHours(23, 59, 59, 999);
+        where.ultMovimiento = Between(inicio, fin);
+      }
+
+      if (denunciante) {
+        const palabras = denunciante.trim().split(' ');
+
+        const apellidoMatch = palabras.map((p) => ({
+          apellido: Like(`%${p}%`),
+          ...(dni && { dni: Like(`%${dni}%`) }),
+          ...(email && { email: Like(`%${email}%`) }),
+        }));
+
+        const nombreMatch = palabras.map((p) => ({
+          nombre: Like(`%${p}%`),
+          ...(dni && { dni: Like(`%${dni}%`) }),
+          ...(email && { email: Like(`%${email}%`) }),
+        }));
+
+        where.denunciante = [...apellidoMatch, ...nombreMatch];
+      } else if (dni || email) {
+        where.denunciante = {
+          ...(dni && { dni: Like(`%${dni}%`) }),
+          ...(email && { email: Like(`%${email}%`) }),
+        };
+      }
+
+      where.estado = estado ? Equal(estado) : In([1, 2, 3]);
+
+      const queryOptions = {
+        relations,
+        where,
+        order: { id: orden },
+        ...(limit && { take: limit }),
+        ...(offset && { skip: offset }),
+      };
+
+      return this.denunciaRepo.find(queryOptions);
     } catch (error) {
       throw new InternalServerErrorException(error.message);
     }
