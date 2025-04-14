@@ -1,12 +1,18 @@
 import { NestFactory, Reflector } from '@nestjs/core';
+import { AppModule } from './app.module';
+import { PinoLogger } from 'nestjs-pino';
 import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import * as cookieParser from 'cookie-parser';
 
-import { AppModule } from './app.module';
-
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    bufferLogs: true,
+  });
+
+  const logger = await app.resolve(PinoLogger);
+
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
   // app.useGlobalPipes(
   //   new ValidationPipe({
@@ -16,8 +22,6 @@ async function bootstrap() {
   //     },
   //   }),
   // );
-
-  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
   app.enableCors({
     origin: [
@@ -33,15 +37,16 @@ async function bootstrap() {
     credentials: true,
   });
 
-  app.setGlobalPrefix('api');
-
   app.use(cookieParser());
+
+  app.setGlobalPrefix('api');
 
   const config = new DocumentBuilder()
     .setTitle('Omic Admin API')
     .setDescription('Documentación de Endpoints')
     .setVersion('1.0')
     .build();
+
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, document);
 
