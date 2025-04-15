@@ -30,6 +30,7 @@ import { DireccionesEnviadasService } from './services/direcciones-enviadas.serv
 import { MovimientoModule } from 'src/movimientos/movimientos.module';
 import { CausasModule } from 'src/causas/causas.module';
 import { CausasService } from 'src/causas/services/causa.service';
+import { QueueModule } from 'src/queue/queue.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { CausasService } from 'src/causas/services/causa.service';
     DocumentosTipoModule,
     MovimientoModule,
     forwardRef(() => CausasModule),
+    QueueModule,
   ],
   providers: [
     DenunciasService,

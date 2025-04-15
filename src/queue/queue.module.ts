@@ -4,6 +4,7 @@ import { QueueService } from './queue.service';
 import { FtpProcessor } from './ftp.processor';
 import { redisConnection } from './redis.config';
 import { PinoLoggerModule } from '../logger/pino-logger.module';
+import { FtpModule } from '../ftp/ftp.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { PinoLoggerModule } from '../logger/pino-logger.module';
       name: 'ftp-tasks',
     }),
     PinoLoggerModule,
+    FtpModule,
   ],
   providers: [QueueService, FtpProcessor],
   exports: [QueueService],

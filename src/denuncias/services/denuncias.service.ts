@@ -27,6 +27,7 @@ import { FilterComplaintDto } from '../dtos/filter.dto';
 import { createDocx } from '../../utils/docxGen';
 import { DenunciaEstadosService } from './denuncia-estados.service';
 import { FtpService } from 'src/ftp/ftp.service';
+import { QueueService } from 'src/queue/queue.service';
 import { Readable, Stream } from 'stream';
 import { TemplateService } from 'src/template/template.service';
 import * as FormData from 'form-data';
@@ -68,6 +69,7 @@ export class DenunciasService {
     @Inject(forwardRef(() => CausasService))
     private causasService: CausasService,
     @Inject(config.KEY) private configService: ConfigType<typeof config>,
+    private readonly queueService: QueueService,
   ) {
     this.startDateDenuncia =
       this.configService.startDateDenuncia || '2024-01-01';
@@ -326,11 +328,64 @@ export class DenunciasService {
         relations,
       });
 
-      if (!denuncia) {
-        throw new NotFoundException('Denuncia no encontrada');
-      }
+      if (!denuncia) throw new NotFoundException('Denuncia no encontrada');
 
-      const archivos = await this.getArchivosAdjuntos(denuncia);
+      const info = this.dtoInfo({
+        denuncia,
+        nro_expediente,
+        denunciante_email,
+        meet_link,
+        time_link,
+        date_link,
+        envio_tipo,
+      });
+
+      const ruta = `${this._dir}/${id}`;
+
+      // 🟡 Crear carpeta en FTP con prioridad alta
+      await this.queueService.addTask(
+        { tipo: 'create-dir', file: { remotePath: ruta } },
+        { jobId: `crear-dir-${id}`, priority: 1, removeOnComplete: true },
+      );
+
+      const downloadJobs = await Promise.all(
+        denuncia.archivos.map(async (archivo) => {
+          const job = await this.queueService.addTask(
+            {
+              tipo: 'download',
+              file: { remotePath: archivo.descripcion },
+            },
+            {
+              jobId: `descarga-${archivo.id}`,
+              priority: 5,
+              removeOnComplete: {
+                age: 120,
+              },
+            },
+          );
+          return { archivo, job };
+        }),
+      );
+
+      const subirArchivo = async (buffer, remotePath, filename) => {
+        await this.queueService.addTask(
+          {
+            tipo: 'upload',
+            file: {
+              fileName: filename,
+              remotePath,
+              content: buffer.toString('base64'),
+            },
+          },
+          {
+            jobId: `upload-${filename}`,
+            priority: 2,
+            removeOnComplete: {
+              age: 120,
+            },
+          },
+        );
+      };
 
       const estado = await this.estadosService.findByKey('ESPERA_AUDIENCIA');
       this.denunciaRepo.merge(denuncia, { estado });
@@ -369,7 +424,6 @@ export class DenunciasService {
               email: persona.email,
             });
           }
-
           if (tipo === 'postal' || tipo === 'ambos') {
             await this.direccionesEnviadasService.create({
               ...payload,
@@ -404,19 +458,6 @@ export class DenunciasService {
         }
       }
 
-      const info = this.dtoInfo({
-        denuncia,
-        nro_expediente,
-        denunciante_email,
-        meet_link,
-        time_link,
-        date_link,
-        envio_tipo,
-      });
-
-      const ruta = `${this._dir}/${id}`;
-      await this.ftpService.createDir(ruta);
-
       const generateAndSaveDocument = async (key, filename, template) => {
         const infoCorregido = {
           ...info,
@@ -430,20 +471,19 @@ export class DenunciasService {
             postales[0]?.domicilio || denunciados[0]?.domicilio || '',
           ),
         };
-        const content = (await this.templateService.createDocx(
+
+        const content = await this.templateService.createDocx(
           infoCorregido,
           template,
-        )) as Buffer;
-        const streamFile = Readable.from(content);
-        const remotePath = `${ruta}/${filename}`;
-        await this.ftpService.fileUpload(streamFile, remotePath);
+        );
+        await subirArchivo(content, ruta, filename);
 
         const documentoTipo = await this.documentosTiposService.findByKey(key);
         await this.denunciaDocumentosService.create({
           denunciaId: denuncia.id,
           documentoTipoId: documentoTipo.id,
           fileName: filename,
-          path: remotePath,
+          path: `${ruta}/${filename}`,
         });
 
         return { filename, content };
@@ -471,11 +511,7 @@ export class DenunciasService {
       };
 
       // 📂 Subir PDF del denunciante al FTP
-      const remotePathDenunciante = `${ruta}/${denuncianteFile.filename}`;
-      await this.ftpService.fileUpload(
-        Readable.from(denunciantePDF),
-        remotePathDenunciante,
-      );
+      await subirArchivo(denunciantePDF, ruta, denuncianteFile.filename);
 
       const documentoTipoDenunciante =
         await this.documentosTiposService.findByKey(denuncianteFile.key);
@@ -483,7 +519,7 @@ export class DenunciasService {
         denunciaId: denuncia.id,
         documentoTipoId: documentoTipoDenunciante.id,
         fileName: denuncianteFile.filename,
-        path: remotePathDenunciante,
+        path: `${ruta}/${id}_CEDULA_DENUNCIANTE.pdf`,
       });
 
       // 📄 Generar PDFs para cada denunciado
@@ -514,9 +550,20 @@ export class DenunciasService {
         throw new Error('🚨 Error: No se pudo generar el archivo de denuncia.');
       }
 
-      await this.ftpService.fileUpload(
-        Readable.from(denunciaFile),
-        remotePathDenuncia,
+      await this.queueService.addTask(
+        {
+          tipo: 'upload',
+          file: {
+            fileName: filenameDenuncia,
+            content: denunciaFile.toString('base64'),
+            remotePath: ruta,
+          },
+        },
+        {
+          priority: 1,
+          jobId: `upload-denuncia-${id}`,
+          removeOnComplete: true,
+        },
       );
 
       denunciadosFiles.push({
@@ -568,7 +615,7 @@ export class DenunciasService {
         postales,
       );
 
-      console.log('listaDenunciados', listaDenunciados);
+      const uploadJobs = [];
 
       for (const denunciado of listaDenunciados) {
         const postalDenunciado = postales.find((p) => p.id === denunciado.id);
@@ -584,19 +631,34 @@ export class DenunciasService {
             direccion_denunciado:
               denunciado.tipoEnvioArray === 'postal' ||
               denunciado.tipoEnvioArray === 'ambos'
-                ? `${postalDenunciado.codPostal} ${postalDenunciado.localidad}`
+                ? `${postalDenunciado?.codPostal || ''} ${
+                    postalDenunciado?.localidad || ''
+                  }`
                 : 'No disponible',
-            envio_tipo: envio_tipo,
+            envio_tipo,
           },
           'denunciado',
         );
 
         const filename = `${id}_CEDULA_DENUNCIADO_${denunciado.id}.pdf`;
-        const remotePathDenunciado = `${ruta}/${filename}`;
-        await this.ftpService.fileUpload(
-          Readable.from(denunciadoPDF),
-          remotePathDenunciado,
+        const remotePath = `${ruta}/${filename}`;
+        const job = await this.queueService.addTask(
+          {
+            tipo: 'upload',
+            file: {
+              fileName: filename,
+              content: denunciadoPDF.toString('base64'),
+              remotePath: ruta,
+            },
+          },
+          {
+            priority: 1,
+            jobId: `upload-denunciado-${denunciado.id}`,
+            removeOnComplete: true,
+          },
         );
+
+        uploadJobs.push(job);
 
         denunciadosFiles.push({
           idDenunciado: denunciado.id,
@@ -612,7 +674,7 @@ export class DenunciasService {
           denunciaId: denuncia.id,
           documentoTipoId: documentoTipoDenunciado.id,
           fileName: filename,
-          path: remotePathDenunciado,
+          path: remotePath,
         });
       }
 
@@ -622,6 +684,12 @@ export class DenunciasService {
           file: denunciantePDF,
         },
       ];
+
+      await Promise.all(
+        uploadJobs.map((j) =>
+          j.waitUntilFinished(this.queueService.getQueueEvents()),
+        ),
+      );
 
       const emailsEnviados = [];
 
@@ -751,6 +819,26 @@ export class DenunciasService {
           7,
           'COMPROBANTE_NOTIFICACION_DENUNCIANTE',
         );
+      }
+
+      const archivos: {
+        buffer: Buffer;
+        filename: string;
+        descripcion: string;
+      }[] = [];
+
+      for (const { archivo, job } of downloadJobs) {
+        const bufferBase64 = await job.waitUntilFinished(
+          this.queueService.getQueueEvents(),
+        );
+        const buffer = Buffer.from(bufferBase64, 'base64');
+        const filename = archivo.descripcion.split('/omic/')[1];
+
+        archivos.push({
+          buffer,
+          filename,
+          descripcion: archivo.descripcion,
+        });
       }
 
       // 📩 Enviar email a cada denunciado
@@ -1180,7 +1268,7 @@ export class DenunciasService {
     );
   }
 
-  private async getArchivosAdjuntos(denuncia) {
+  private async getArchivosAdjuntos(denuncia): Promise<any[]> {
     console.log('📥 Descargando archivos desde el FTP...');
 
     const archivos = [];
@@ -1189,7 +1277,8 @@ export class DenunciasService {
       console.log(`📂 Descargando: ${archivo.descripcion}`);
 
       try {
-        const buffer = await this.ftpService.downloadFileAsBuffer(
+        // ⬇️ Nueva implementación usando la cola
+        const buffer = await this.queueService.downloadFile(
           archivo.descripcion,
         );
         const filename = archivo.descripcion.split('/omic/')[1];
