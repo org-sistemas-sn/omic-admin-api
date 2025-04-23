@@ -4,11 +4,15 @@ import { PinoLogger } from 'nestjs-pino';
 import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import * as cookieParser from 'cookie-parser';
+import { DenunciaProcessor } from './queue/denuncia.processor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     bufferLogs: true,
+    logger: false,
   });
+
+  app.get(DenunciaProcessor);
 
   const logger = await app.resolve(PinoLogger);
 

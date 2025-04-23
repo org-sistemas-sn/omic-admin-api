@@ -42,10 +42,21 @@ export class DatosNotificacionService {
 
     return await this.datosNotificacionRepo.save(newDenounced);
   }
+
   async findById(id: number) {
     const e = this.datosNotificacionRepo.findOne({
       where: {
         id,
+      },
+    });
+
+    return e;
+  }
+
+  async findByDenuncia(denunciaId: number) {
+    const e = this.datosNotificacionRepo.findOne({
+      where: {
+        denuncia: { id: denunciaId },
       },
     });
 

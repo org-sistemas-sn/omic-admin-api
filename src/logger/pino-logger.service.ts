@@ -15,6 +15,9 @@ export class LoggerConfigService {
           },
         },
         level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+        autoLogging: {
+          ignore: (req) => req.url === '/api/denuncias/aprobbed',
+        },
       },
     };
   }

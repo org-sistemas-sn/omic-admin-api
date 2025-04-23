@@ -12,6 +12,7 @@ import {
   Put,
   ParseIntPipe,
   UploadedFile,
+  HttpCode,
 } from '@nestjs/common';
 import {
   FileFieldsInterceptor,
@@ -158,8 +159,9 @@ export class DenunciasController {
   }
 
   @Post('/aprobbed')
+  @HttpCode(201)
   create(@Body() payload: any) {
-    return this.denunciaService.aprobbed(payload);
+    return this.denunciaService.procesarDenunciaCompleta(payload);
   }
 
   @Post('/reject')
