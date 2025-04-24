@@ -159,7 +159,6 @@ export class DenunciasController {
   }
 
   @Post('/aprobbed')
-  @HttpCode(201)
   create(@Body() payload: any) {
     return this.denunciaService.procesarDenunciaCompleta(payload);
   }

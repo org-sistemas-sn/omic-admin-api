@@ -15,11 +15,12 @@ export class DenunciaTasksService {
     denuncia,
     etapa,
     prioridad = 1,
+    jobId,
   }: {
     denuncia: Denuncia;
     etapa: string;
     prioridad?: number;
-    creado_por?: number;
+    jobId: string;
   }) {
     const task = this.tasksRepo.create({
       denuncia,
@@ -27,6 +28,7 @@ export class DenunciaTasksService {
       estado: 'EN_COLA',
       prioridad,
       intentos: 0,
+      jobId,
     });
     return this.tasksRepo.save(task);
   }
@@ -52,14 +54,19 @@ export class DenunciaTasksService {
     return this.markTaskAsExecuted(task.id);
   }
 
-  async markTaskAsFailed(id: number) {
+  async markTaskAsFailed(id: number, error: string) {
     const task = await this.tasksRepo.findOne({ where: { id } });
     if (!task) return null;
 
     return this.tasksRepo.update(id, {
       estado: 'FALLIDO',
       intentos: (task.intentos || 0) + 1,
+      error,
     });
+  }
+
+  async findTaskByJobId(jobId: string) {
+    return this.tasksRepo.findOne({ where: { jobId } });
   }
 
   async findTasksByEstado(estado: 'EN_COLA' | 'EJECUTADO' | 'FALLIDO') {

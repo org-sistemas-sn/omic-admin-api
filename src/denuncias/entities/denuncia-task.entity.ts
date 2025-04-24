@@ -35,4 +35,10 @@ export class DenunciaTasks {
 
   @Column({ type: 'timestamp', nullable: true })
   fecha_ejecucion: Date;
+
+  @Column({ type: 'varchar', length: 100 })
+  jobId: string;
+
+  @Column({ type: 'text', nullable: true })
+  error: string | null;
 }

@@ -9,7 +9,6 @@ import { DenunciaProcessor } from './queue/denuncia.processor';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     bufferLogs: true,
-    logger: false,
   });
 
   app.get(DenunciaProcessor);
