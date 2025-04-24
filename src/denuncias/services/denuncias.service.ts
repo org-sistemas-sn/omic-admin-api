@@ -379,18 +379,20 @@ export class DenunciasService {
       denunciaId: denuncia.id,
     });
 
+    const jobId = `subir-documentos-${Date.now()}-${id}`;
+
     await this.denunciaTasksService.createTask({
       denuncia,
       etapa: 'subir-documentos',
       prioridad: 1,
-      jobId: `subir-documentos-${id}`,
+      jobId,
     });
 
     await this.queueService.addDenunciaTask(
       'subir-documentos',
-      { ...data, jobId: `subir-documentos-${id}` },
+      { ...data, jobId },
       {
-        jobId: `subir-documentos-${id}`,
+        jobId,
         priority: 2,
       },
     );
@@ -552,20 +554,23 @@ export class DenunciasService {
         await saveDocumento(file, 'CEDULA_APERTURA_DENUNCIADO');
       }
 
-      // 🔜 Encolar siguiente etapa: NOTIFICACION
+      const jobId = `notificar-${Date.now()}-${id}`;
+
       await this.denunciaTasksService.createTask({
         denuncia,
         etapa: 'notificar-por-correo',
         prioridad: 2,
-        jobId: `notificar-${id}`,
+        jobId,
       });
-      console.log(`📌 [TASK] Etapa NOTIFICACION encolada para denuncia #${id}`);
+      console.log(
+        `📌 [TASK] Etapa NOTIFICACION encolada para denuncia #${id} con JobID ${jobId}`,
+      );
 
       await this.queueService.addDenunciaTask(
         'notificar-por-correo',
-        { ...data, jobId: `notificar-${id}` },
+        { ...data, jobId },
         {
-          jobId: `notificar-${id}`,
+          jobId,
           priority: 3,
         },
       );
