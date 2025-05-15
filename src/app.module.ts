@@ -14,6 +14,7 @@ import { FojasModule } from './fojas/fojas.module';
 import { DocumentosTipoModule } from './documentosTipo/documentosTipos.module';
 import { MovimientoModule } from './movimientos/movimientos.module';
 import { CausasModule } from './causas/causas.module';
+import { ExpedientesModule } from './expedientes/expedientes.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { CausasModule } from './causas/causas.module';
     DocumentosTipoModule,
     MovimientoModule,
     CausasModule,
+    ExpedientesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
