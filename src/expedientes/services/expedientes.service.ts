@@ -13,8 +13,8 @@ import { DenunciadoNoDigitalizado } from 'src/causas/entities/denunciadoNoDigita
 import * as ExcelJS from 'exceljs';
 import { FilterExpedientesDto } from '../dtos/filter-expedientes.dto';
 import { ExpedienteDto } from '../dtos/expediente.dto';
-import { parse } from 'date-fns';
-import { es } from 'date-fns/locale';
+import * as moment from 'moment';
+import 'moment/locale/es';
 
 const expectedHeaders = [
   'nro.expediente',
@@ -24,6 +24,71 @@ const expectedHeaders = [
   'fecha inicio',
   'estado',
 ];
+
+const corregirFechaRaw = (fecha: string): string => {
+  return (
+    fecha
+      .normalize('NFD') // elimina tildes compuestas
+      .replace(/[^\w\s,\.áéíóúÁÉÍÓÚñÑ]/g, '') // elimina símbolos raros excepto punto y coma
+      .replace(/\.(?=\s|$)/g, '') // elimina puntos sueltos al final
+      .replace(/([a-záéíóúñ])[,\.](\d)/gi, '$1, $2') // lunes.11 → lunes, 11
+      .replace(/(\d{1,2}),(\s*de)/gi, '$1 $2') // asegura espacio entre número y "de"
+      .replace(/(\d{1,2})de\s+([a-z]+)/gi, '$1 de $2') // asegura espacio entre número y mes
+      .replace(/\s+/g, ' ') // colapsa espacios múltiples
+      .replace(/ ,/g, ',') // quita espacio antes de coma
+      .replace(/,(\S)/g, ', $1') // agrega espacio después de coma si falta
+      .replace(/de\s+de/gi, 'de') // corrige "de de"
+      .replace(/de(\d{4})/gi, 'de $1') // corrige "de2022"
+      .replace(/\b0(\d)\b/g, '$1') // elimina ceros a la izquierda en días
+
+      // Correcciones de errores comunes en los meses
+      .replace(/nviembre|novimbre|noveimbre/gi, 'noviembre')
+      .replace(/septiemre|septimbre/gi, 'septiembre')
+      .replace(/enerp|eneri|eneriio/gi, 'enero')
+      .replace(/marzi/gi, 'marzo')
+
+      // Días de la semana
+      .replace(/miercoles/gi, 'miércoles')
+      .replace(/sabado/gi, 'sábado')
+      .replace(/domingo/gi, 'domingo')
+      .replace(/lunes/gi, 'lunes')
+      .replace(/martes/gi, 'martes')
+      .replace(/miércoles/gi, 'miércoles')
+      .replace(/jueves/gi, 'jueves')
+      .replace(/viernes/gi, 'viernes')
+
+      // Corrige caso puntual "4 d abril"
+      .replace(/(\d{1,2})\s+d\s+([a-z]+)/gi, '$1 de $2')
+
+      .trim()
+      .toLowerCase()
+  );
+};
+
+export const parsearFechaConFormatos = (fecha: string): string | null => {
+  const corregida = corregirFechaRaw(fecha);
+  const posiblesFormatos = [
+    'dddd, DD [de] MMMM [de] YYYY', // ← para "miércoles, 16 de julio de 2024"
+    'dddd, D [de] MMMM [de] YYYY', // ya está
+    'dddd D [de] MMMM [de] YYYY',
+    'D [de] MMMM [de] YYYY',
+    'D [de] MMMM YYYY',
+    'dddd D MMMM [de] YYYY',
+    'D MMMM [de] YYYY',
+    'DD/MM/YYYY',
+    'D/M/YYYY',
+  ];
+
+  for (const formato of posiblesFormatos) {
+    const parsed = moment(corregida, formato, true).locale('es');
+    if (parsed.isValid()) {
+      console.log(`✅ Fecha válida: ${parsed.format('YYYY-MM-DD')}`);
+      return parsed.format('YYYY-MM-DD');
+    }
+  }
+
+  return null;
+};
 
 @Injectable()
 export class ExpedientesService {
@@ -167,97 +232,128 @@ export class ExpedientesService {
       throw new BadRequestException(errors);
     }
 
-    // Validar orden
-    const isOrdered = expectedHeaders.every(
-      (field, index) => headers[index] === field,
-    );
-    if (!isOrdered) {
-      throw new BadRequestException(
-        'Las columnas no están en el orden esperado',
-      );
-    }
-
     const dataRows = worksheet.getRows(2, worksheet.rowCount - 1);
-    const causas = [];
+    const causas: CausaNoDigitalizada[] = [];
     const filasIgnoradas: any[] = [];
 
     for (const row of dataRows) {
-      const nroExpediente = String(row.getCell(1).text).trim();
+      const nroExpedienteRaw = row.getCell(1).text.trim();
       const denunciante = String(row.getCell(2).text).trim();
       const denunciado1 = String(row.getCell(3).text).trim();
       const denunciado2 = String(row.getCell(4).text).trim();
-      const fechaRaw = String(row.getCell(5).text).trim();
       const estado = String(row.getCell(6).text).trim();
 
-      // Verificar que haya datos mínimos
-      if (!nroExpediente || !fechaRaw) {
+      const fechaCell = row.getCell(5);
+      let fechaRaw = '';
+      let fechaParseada: string | null = null;
+      let fechaCorregida = '';
+      let fechaInvalida = false;
+
+      if (
+        fechaCell.type === ExcelJS.ValueType.Date &&
+        fechaCell.value instanceof Date
+      ) {
+        fechaParseada = fechaCell.value.toISOString().split('T')[0];
+      } else {
+        fechaRaw = String(fechaCell.text).trim();
+
+        if (!fechaRaw || fechaRaw.includes('#') || !isNaN(Number(fechaRaw))) {
+          fechaInvalida = true;
+        } else {
+          fechaCorregida = corregirFechaRaw(fechaRaw);
+          fechaParseada = parsearFechaConFormatos(fechaRaw);
+          if (!fechaParseada) fechaInvalida = true;
+        }
+      }
+
+      const nroExpedienteInvalido =
+        !nroExpedienteRaw || nroExpedienteRaw === '0';
+
+      if (nroExpedienteInvalido || fechaInvalida) {
+        let motivo = '';
+        if (nroExpedienteInvalido && fechaInvalida)
+          motivo = 'Expediente y fecha inválidos';
+        else if (nroExpedienteInvalido)
+          motivo = 'Número de expediente inválido';
+        else motivo = 'Fecha inválida';
+
         filasIgnoradas.push({
           fila: row.number,
-          nroExpediente,
-          denunciante,
-          denunciado1,
-          denunciado2,
-          fechaInicio: fechaRaw,
-          estado,
-          motivo: 'Faltan nroExpediente o fechaInicio',
+          nroExpediente: nroExpedienteRaw,
+          fechaInicio: fechaRaw || fechaCell.value,
+          fechaCorregida,
+          motivo,
         });
         continue;
       }
 
-      // Parsear fecha
-      let fechaParseada: string | null = null;
-
-      const posiblesFormatos = [
-        "EEEE, d 'de' MMMM 'de' yyyy",
-        "d 'de' MMMM 'de' yyyy",
-        'EEE MMM dd yyyy HH:mm:ss',
-        'yyyy-MM-dd',
+      const denunciados = [
+        this.denunciadoNoDigitalRepo.create({ nombre: denunciado1 }),
+        ...(denunciado2 && !denunciado2.startsWith('XXXXXX')
+          ? [this.denunciadoNoDigitalRepo.create({ nombre: denunciado2 })]
+          : []),
       ];
 
-      for (const formato of posiblesFormatos) {
-        try {
-          const parsed = parse(fechaRaw, formato, new Date(), { locale: es });
-          if (!isNaN(parsed.getTime())) {
-            fechaParseada = parsed.toISOString().split('T')[0];
-            break;
-          }
-        } catch {}
-      }
-
-      if (!fechaParseada) {
-        filasIgnoradas.push({
-          fila: row.number,
-          nroExpediente,
-          denunciante,
-          denunciado1,
-          denunciado2,
-          fechaInicio: fechaRaw,
-          estado,
-          motivo: 'Fecha inválida',
-        });
-        continue;
-      }
-
-      const causa = this.causaNoDigitalRepo.create({
-        nroExpediente,
-        denunciante,
-        fechaInicio: fechaParseada,
-        estado,
-        denunciados: [
-          this.denunciadoNoDigitalRepo.create({ nombre: denunciado1 }),
-          ...(denunciado2 && !denunciado2.startsWith('XXXXXX')
-            ? [this.denunciadoNoDigitalRepo.create({ nombre: denunciado2 })]
-            : []),
-        ],
+      const existente = await this.causaNoDigitalRepo.findOne({
+        where: { nroExpediente: nroExpedienteRaw },
+        relations: ['denunciados'],
       });
 
-      causas.push(causa);
+      if (existente) {
+        existente.denunciante = denunciante;
+        existente.fechaInicio = fechaParseada;
+        existente.estado = estado;
+
+        const updated = await this.causaNoDigitalRepo.save(existente);
+        causas.push(updated); // ✅ Agregado al array
+
+        const nuevosDenunciados = [
+          this.denunciadoNoDigitalRepo.create({
+            nombre: denunciado1,
+            causa: existente,
+          }),
+          ...(denunciado2 && !denunciado2.startsWith('XXXXXX')
+            ? [
+                this.denunciadoNoDigitalRepo.create({
+                  nombre: denunciado2,
+                  causa: existente,
+                }),
+              ]
+            : []),
+        ];
+        await this.denunciadoNoDigitalRepo.save(nuevosDenunciados);
+      } else {
+        const nueva = this.causaNoDigitalRepo.create({
+          nroExpediente: nroExpedienteRaw,
+          denunciante,
+          fechaInicio: fechaParseada,
+          estado,
+        });
+
+        const saved = await this.causaNoDigitalRepo.save(nueva);
+        causas.push(saved); // ✅ Agregado al array
+
+        const nuevosDenunciados = [
+          this.denunciadoNoDigitalRepo.create({
+            nombre: denunciado1,
+            causa: saved,
+          }),
+          ...(denunciado2 && !denunciado2.startsWith('XXXXXX')
+            ? [
+                this.denunciadoNoDigitalRepo.create({
+                  nombre: denunciado2,
+                  causa: saved,
+                }),
+              ]
+            : []),
+        ];
+
+        await this.denunciadoNoDigitalRepo.save(nuevosDenunciados);
+      }
     }
 
-    await this.causaNoDigitalRepo.save(causas);
-
     if (filasIgnoradas.length) {
-      console.log('\n❌ Filas ignoradas por problemas:');
+      console.log('\n❌ Filas ignoradas por errores:');
       console.table(filasIgnoradas);
     }
 
@@ -266,6 +362,7 @@ export class ExpedientesService {
       statusCode: HttpStatus.CREATED,
       cantidad: causas.length,
       filasIgnoradas: filasIgnoradas.length,
+      detalleFilasIgnoradas: filasIgnoradas,
     };
   }
 }
