@@ -308,12 +308,23 @@ export class ExpedientesService {
         const updated = await this.causaNoDigitalRepo.save(existente);
         causas.push(updated); // ✅ Agregado al array
 
+        const existentesNombres = existente.denunciados.map((d) =>
+          d.nombre.toLowerCase(),
+        );
+
         const nuevosDenunciados = [
-          this.denunciadoNoDigitalRepo.create({
-            nombre: denunciado1,
-            causa: existente,
-          }),
-          ...(denunciado2 && !denunciado2.startsWith('XXXXXX')
+          ...(denunciado1 &&
+          !existentesNombres.includes(denunciado1.toLowerCase())
+            ? [
+                this.denunciadoNoDigitalRepo.create({
+                  nombre: denunciado1,
+                  causa: existente,
+                }),
+              ]
+            : []),
+          ...(denunciado2 &&
+          !denunciado2.startsWith('XXXXXX') &&
+          !existentesNombres.includes(denunciado2.toLowerCase())
             ? [
                 this.denunciadoNoDigitalRepo.create({
                   nombre: denunciado2,
@@ -322,7 +333,10 @@ export class ExpedientesService {
               ]
             : []),
         ];
-        await this.denunciadoNoDigitalRepo.save(nuevosDenunciados);
+
+        if (nuevosDenunciados.length > 0) {
+          await this.denunciadoNoDigitalRepo.save(nuevosDenunciados);
+        }
       } else {
         const nueva = this.causaNoDigitalRepo.create({
           nroExpediente: nroExpedienteRaw,
