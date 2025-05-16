@@ -169,7 +169,8 @@ export class ExpedientesService {
     const filtered = all.filter((exp) => {
       if (
         filters?.nroExpediente &&
-        !exp.nroExpediente.includes(filters.nroExpediente)
+        (!exp.nroExpediente ||
+          !exp.nroExpediente.includes(filters.nroExpediente))
       )
         return false;
       if (filters?.anio && !exp.fecha.startsWith(String(filters.anio)))
