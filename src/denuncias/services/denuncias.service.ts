@@ -741,7 +741,7 @@ export class DenunciasService {
 
         try {
           const response = await axios.post(
-            'https://notificaciones-8abd2b855cde.herokuapp.com/api/notifications/notifications-email',
+            'https://vps-3941078-x.dattaweb.com/notificaciones-api/api/notifications/notifications-email',
             form,
             {
               headers: {
@@ -949,7 +949,7 @@ export class DenunciasService {
       };
 
       axios.post(
-        'https://notificaciones-8abd2b855cde.herokuapp.com/api/notifications/notifications-email',
+        'https://vps-3941078-x.dattaweb.com/notificaciones-api/api/notifications/notifications-email',
         dataNot,
         {
           headers: {
@@ -1365,7 +1365,7 @@ export class DenunciasService {
     });
     console.log('dataNot', dataNot);
     return axios.post(
-      'https://notificaciones-8abd2b855cde.herokuapp.com/api/notifications/notifications-email',
+      'https://vps-3941078-x.dattaweb.com/notificaciones-api/api/notifications/notifications-email',
       form,
       {
         headers: { 'api-key': 'fJfCznx805geZEjuvAU533raN4HNh4WB' },
@@ -2018,7 +2018,7 @@ export class DenunciasService {
 
         try {
           const response = await axios.post(
-            'https://notificaciones-8abd2b855cde.herokuapp.com/api/notifications/notifications-email',
+            'https://vps-3941078-x.dattaweb.com/notificaciones-api/api/notifications/notifications-email',
             form,
             {
               headers: {
@@ -2258,7 +2258,7 @@ export class DenunciasService {
 
         try {
           const response = await axios.post(
-            'https://notificaciones-8abd2b855cde.herokuapp.com/api/notifications/notifications-email',
+            'https://vps-3941078-x.dattaweb.com/notificaciones-api/api/notifications/notifications-email',
             form,
             {
               headers: {
