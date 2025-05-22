@@ -36,6 +36,7 @@ async function bootstrap() {
       `https://testing6.sannicolasciudad.gob.ar`,
       `https://omic.sannicolas.gob.ar`,
       `https://omic-admin.sannicolas.gob.ar`,
+      `http://localhost:5173`,
     ],
     credentials: true,
   });
@@ -52,6 +53,16 @@ async function bootstrap() {
 
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, document);
+
+  // Acceder a la instancia de Express y extender el timeout
+  const expressApp = app.getHttpAdapter().getInstance();
+
+  expressApp.use((req, res, next) => {
+    // Aumentar el timeout a 10 minutos
+    req.setTimeout(600000);
+    res.setTimeout(600000);
+    next();
+  });
 
   await app.listen(process.env.PORT || 3001);
 }

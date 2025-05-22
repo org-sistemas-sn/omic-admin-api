@@ -2565,7 +2565,12 @@ export class DenunciasService {
       postales,
     } = parsedPayload;
 
-    const relations = ['denunciante', 'denunciaDocumentos'];
+    const relations = [
+      'denunciante', 
+      'denunciaDocumentos',
+      'denunciadoDenuncia',
+      'denunciadoDenuncia.denunciado',
+    ];
 
     const denuncia = await this.denunciaRepo.findOne({
       where: { id },

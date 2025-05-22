@@ -25,21 +25,21 @@ export const generatePDF = async (info: any, tipo: string) => {
     console.log(':rocket: Iniciando Puppeteer...');
 
     const browser = await puppeteer.launch({
-      executablePath: process.env.CHROME_PATH || '/usr/bin/chromium-browser',
+      // executablePath: process.env.CHROME_PATH || '/usr/bin/chromium-browser',
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--disable-gpu',
-        '--no-zygote',
-        '--disable-software-rasterizer',
-        '--single-process',
-        '--disable-background-timer-throttling',
-        '--disable-backgrounding-occluded-windows',
-        '--disable-renderer-backgrounding',
+        // '--disable-dev-shm-usage',
+        // '--disable-accelerated-2d-canvas',
+        // '--disable-gpu',
+        // '--no-zygote',
+        // '--disable-software-rasterizer',
+        // '--single-process',
+        // '--disable-background-timer-throttling',
+        // '--disable-backgrounding-occluded-windows',
+        // '--disable-renderer-backgrounding',
       ],
-      protocolTimeout: 60000,
+      protocolTimeout: 120000,
       headless: true,
     });
 

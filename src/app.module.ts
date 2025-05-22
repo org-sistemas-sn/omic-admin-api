@@ -16,6 +16,7 @@ import { MovimientoModule } from './movimientos/movimientos.module';
 import { CausasModule } from './causas/causas.module';
 import { QueueModule } from './queue/queue.module';
 import { PinoLoggerModule } from './logger/pino-logger.module';
+import { ExpedientesModule } from './expedientes/expedientes.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { PinoLoggerModule } from './logger/pino-logger.module';
     CausasModule,
     QueueModule,
     PinoLoggerModule,
+    ExpedientesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
