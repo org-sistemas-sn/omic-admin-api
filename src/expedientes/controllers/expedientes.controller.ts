@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -13,7 +14,10 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { ExpedientesService } from '../services/expedientes.service';
-import { PaginatedExpedientesResponse } from '../dtos/expediente.dto';
+import {
+  PaginatedExpedientesResponse,
+  PaginatedCausasNoDigitalizadasResponse,
+} from '../dtos/expediente.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UpdateEstadoDto } from '../dtos/update-estado.dto';
 import { FilterExpedientesDto } from '../dtos/filter-expedientes.dto';
@@ -35,19 +39,33 @@ export class ExpedientesController {
     );
   }
 
+  @Get('/no-digitalizados')
+  async getNoDigitalizados(
+    @Query('page') page = 1,
+    @Query('limit') limit = 10,
+  ): Promise<PaginatedCausasNoDigitalizadasResponse> {
+    return this.expedientesService.getNoDigitalizados(
+      Number(page),
+      Number(limit),
+    );
+  }
+
   @Post('carga-masiva')
   @UseInterceptors(FileInterceptor('file'))
-  uploadFile(
-    @UploadedFile(
-      new ParseFilePipeBuilder()
-        .addFileTypeValidator({
-          fileType:
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        })
-        .build({ errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY }),
-    )
-    file: Express.Multer.File,
-  ) {
+  uploadFile(@UploadedFile() file: Express.Multer.File) {
+    if (
+      file.mimetype !==
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' &&
+      !file.originalname.toLowerCase().endsWith('.xlsx')
+    ) {
+      throw new BadRequestException('Debe subir un archivo Excel (.xlsx)');
+    }
+    console.log('Archivo recibido:', {
+      filename: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+    });
+
     return this.expedientesService.importarDesdeExcel(file.buffer);
   }
 

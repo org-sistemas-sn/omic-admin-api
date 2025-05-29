@@ -205,6 +205,33 @@ export class ExpedientesService {
     };
   }
 
+  async getNoDigitalizados(
+    page = 1,
+    limit = 10,
+  ): Promise<{
+    page: number;
+    limit: number;
+    totalItems: number;
+    data: CausaNoDigitalizada[];
+  }> {
+    const skip = (page - 1) * limit;
+    console.log(skip, limit);
+
+    const [data, totalItems] = await this.causaNoDigitalRepo.findAndCount({
+      skip,
+      take: limit,
+      order: { fechaInicio: 'DESC' },
+      relations: ['denunciados'],
+    });
+
+    return {
+      page,
+      limit,
+      totalItems,
+      data,
+    };
+  }
+
   async actualizarEstado(id: number, estado: string) {
     const causa = await this.causaNoDigitalRepo.findOneBy({ id });
     if (!causa) throw new NotFoundException('Causa no encontrada');
@@ -346,7 +373,7 @@ export class ExpedientesService {
         });
 
         const saved = await this.causaNoDigitalRepo.save(nueva);
-        causas.push(saved); // ✅ Agregado al array
+        causas.push(saved);
 
         const nuevosDenunciados = [
           this.denunciadoNoDigitalRepo.create({
