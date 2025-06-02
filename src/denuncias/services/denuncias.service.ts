@@ -553,8 +553,53 @@ export class DenunciasService {
         }),
       };
 
+      const formatedData = {
+        denunciante: {
+          nombre: denunciaData?.denunciante?.nombre || 'Sin Nombre',
+          apellido: denunciaData?.denunciante?.apellido || 'Sin Apellido',
+          dni: denunciaData?.denunciante?.dni || 'Sin DNI',
+          email: denunciaData?.denunciante?.email || 'Sin Email',
+          tel: denunciaData?.denunciante?.telefono || 'Sin Teléfono',
+          telalt:
+            denunciaData?.denunciante?.telefonoAlter ||
+            'Sin Teléfono Alternativo',
+          celular: denunciaData?.denunciante?.celular || 'Sin Celular',
+          domicilio: denunciaData?.denunciante?.domicilio || 'Sin Domicilio',
+          localidad: denunciaData?.denunciante?.localidad || 'Sin Localidad',
+          codpostal:
+            denunciaData?.denunciante?.codPostal || 'Sin Código Postal',
+        },
+        autorizado: {
+          nombre: denunciaData?.autorizado?.nombre || 'Sin Nombre',
+          apellido: denunciaData?.autorizado?.apellido || 'Sin Apellido',
+          dni: denunciaData?.autorizado?.dni || 'Sin DNI',
+          domicilio: denunciaData?.autorizado?.domicilio || 'Sin Domicilio',
+          localidad: denunciaData?.autorizado?.localidad || 'Sin Localidad',
+          tel: denunciaData?.autorizado?.telefono || 'Sin Teléfono',
+          email: denunciaData?.autorizado?.email || 'Sin Email',
+        },
+        denunciados: denunciaData?.denunciadoDenuncia?.map((d) => ({
+          nombre: d.denunciado?.nombre || 'Sin Nombre',
+          dni: d.denunciado?.dniCuilCuit || 'Sin DNI',
+          codpostal: d.denunciado?.codPostal || 'Sin Código Postal',
+          domicilio: d.denunciado?.domicilio || 'Sin Domicilio',
+          localidad: d.denunciado?.localidad || 'Sin Localidad',
+          tel: d.denunciado?.telefono || 'Sin Teléfono',
+          telalt: d.denunciado?.telefonoAlter || 'Sin Teléfono Alternativo',
+          email: d.denunciado?.email || 'Sin Email',
+        })),
+        hechos: denunciaData?.descripcionHechos || 'Sin Descripción de Hechos',
+        pretension: denunciaData?.pretension || 'Sin Pretensión',
+        maneraContratar:
+          denunciaData?.maneraContrato || 'Sin Manera de Contratar',
+        metodoPago: denunciaData?.metodoPago || 'Sin Método de Pago',
+        realizoReclamo: denunciaData?.realizoReclamo || 'Sin Reclamo Realizado',
+        observaciones: denunciaData?.observaciones || 'Sin Observaciones',
+        servicio: denunciaData?.servicio || 'Sin Servicio',
+      };
+
       const denunciaFile = await this.templateService.createDocx(
-        denunciaData,
+        formatedData,
         'DENUNCIA.docx',
       );
 
@@ -1866,7 +1911,7 @@ export class DenunciasService {
     } = parsedPayload;
 
     const relations = [
-      'denunciante', 
+      'denunciante',
       'denunciaDocumentos',
       'denunciadoDenuncia',
       'denunciadoDenuncia.denunciado',
