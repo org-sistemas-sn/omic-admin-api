@@ -248,6 +248,7 @@ export class DenunciasService {
       'datosNotificacion.direccionesEnviadas.denunciado',
       'datosNotificacion.denunciaEstado',
       'datosNotificacion.denunciaEstado.estado',
+      'datosNotificacion.usuario',
       // 'archivos',
       // 'denunciaDocumentos',
     ];
