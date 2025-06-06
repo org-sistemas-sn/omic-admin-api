@@ -7,8 +7,9 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
+  Between,
   Equal,
-  FindOperator,
+  FindOptionsOrderValue,
   FindOptionsWhere,
   IsNull,
   Like,
@@ -93,129 +94,97 @@ export class CausasService {
         'denuncia.denunciaEstados',
       ];
 
-      if (params) {
-        const { limit, offset } = params;
+      if (!params) return this.causasRepo.find({ relations });
 
-        const {
-          anioCausa,
-          nroCausa,
-          nroExpediente,
-          denunciante,
-          dni,
-          email,
-          estado,
-          date,
-          ultMovimiento,
-          orden = 'desc',
-        } = params;
+      const {
+        limit,
+        offset,
+        anioCausa,
+        nroCausa,
+        nroExpediente,
+        denunciante,
+        dni,
+        date,
+        email,
+        estado,
+        orden = 'desc',
+      } = params;
 
-        const denunciaWhere: FindOptionsWhere<Denuncia> = {
-          id: Not(IsNull()),
-        };
+      const denunciaWhere: FindOptionsWhere<Denuncia> = {
+        id: Not(IsNull()),
+        // fecha: MoreThanOrEqual(
+        //   new Date(this.startDateDenuncia.replaceAll('-', '/')),
+        // ),
+      };
 
-        if (date) {
-          denunciaWhere.fecha = new Date(date.replaceAll('-', '/'));
-        }
-        if (ultMovimiento) {
-          denunciaWhere.ultMovimiento = new Date(
-            ultMovimiento.replaceAll('-', '/'),
-          );
-        }
-        if (nroExpediente) {
-          denunciaWhere.nroExpediente = nroExpediente;
-        }
-
-        if (denunciante) {
-          const words = denunciante.trim().split(' ');
-          const denuncianteApellido = words.map((e) => {
-            let denuncianteWhere: {
-              apellido: FindOperator<string>;
-              dni?: FindOperator<string>;
-              email?: FindOperator<string>;
-            } = {
-              apellido: Like(`%${e}%`),
-            };
-            if (dni) {
-              denuncianteWhere = { ...denuncianteWhere, dni: Like(`%${dni}%`) };
-            }
-            if (email) {
-              denuncianteWhere = {
-                ...denuncianteWhere,
-                email: Like(`%${email}%`),
-              };
-            }
-            return denuncianteWhere;
-          });
-
-          const denuncianteNombre = words.map((e) => {
-            let denuncianteWhere: {
-              nombre: FindOperator<string>;
-              dni?: FindOperator<string>;
-              email?: FindOperator<string>;
-            } = {
-              nombre: Like(`%${e}%`),
-            };
-            if (dni) {
-              denuncianteWhere = { ...denuncianteWhere, dni: Like(`%${dni}%`) };
-            }
-            if (email) {
-              denuncianteWhere = {
-                ...denuncianteWhere,
-                email: Like(`%${email}%`),
-              };
-            }
-            return denuncianteWhere;
-          });
-
-          denunciaWhere.denunciante = [
-            ...denuncianteApellido,
-            ...denuncianteNombre,
-          ];
-        } else {
-          if (dni) denunciaWhere.denunciante = { dni: Like(`%${dni}%`) };
-          if (email) denunciaWhere.denunciante = { email: Like(`%${email}%`) };
-        }
-
-        if (estado) {
-          denunciaWhere.estado = Equal(estado);
-        }
-
-        const causaWhere: FindOptionsWhere<Causa> = {
-          deletedAt: null,
-        };
-
-        if (nroCausa) {
-          causaWhere.nroCausa = nroCausa;
-        }
-        if (anioCausa) {
-          causaWhere.anioCausa = anioCausa;
-        }
-
-        if (!limit) {
-          return this.causasRepo.find({
-            relations,
-            where: {
-              ...causaWhere,
-              denuncia: denunciaWhere,
-            },
-          });
-        }
-
-        return this.causasRepo.find({
-          relations,
-          where: {
-            ...causaWhere,
-            denuncia: denunciaWhere,
-          },
-          take: limit,
-          skip: offset,
-          order: {
-            nroCausa: orden.toLowerCase(),
-          },
-        });
+      if (date) {
+        const inicio = new Date(date);
+        inicio.setUTCHours(0, 0, 0, 0);
+        const fin = new Date(date);
+        fin.setUTCHours(23, 59, 59, 999);
+        denunciaWhere.fecha = Between(inicio, fin);
       }
 
-      return this.causasRepo.find({ relations });
+      if (nroExpediente) {
+        denunciaWhere.nroExpediente = nroExpediente;
+      }
+
+      if (denunciante) {
+        const palabras = denunciante.trim().split(' ');
+
+        const apellidoMatch = palabras.map((p) => ({
+          apellido: Like(`%${p}%`),
+          ...(dni && { dni: Like(`%${dni}%`) }),
+          ...(email && { email: Like(`%${email}%`) }),
+        }));
+
+        const nombreMatch = palabras.map((p) => ({
+          nombre: Like(`%${p}%`),
+          ...(dni && { dni: Like(`%${dni}%`) }),
+          ...(email && { email: Like(`%${email}%`) }),
+        }));
+
+        denunciaWhere.denunciante = [...apellidoMatch, ...nombreMatch];
+      } else if (dni || email) {
+        denunciaWhere.denunciante = {
+          ...(dni && { dni: Like(`%${dni}%`) }),
+          ...(email && { email: Like(`%${email}%`) }),
+        };
+      }
+
+      if (estado) {
+        denunciaWhere.estado = Equal(estado);
+      }
+
+      const causaWhere: FindOptionsWhere<Causa> = {
+        deletedAt: null,
+      };
+
+      if (nroCausa) {
+        causaWhere.nroCausa = nroCausa;
+      }
+
+      if (anioCausa) {
+        causaWhere.anioCausa = anioCausa;
+      }
+
+      const direction: FindOptionsOrderValue =
+        orden?.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+
+      const queryOptions = {
+        relations,
+        where: {
+          ...causaWhere,
+          denuncia: denunciaWhere,
+        },
+        order: {
+          nroCausa: direction,
+        },
+        ...(limit && { take: limit }),
+        ...(offset && { skip: offset }),
+      };
+
+      return this.causasRepo.find(queryOptions);
     } catch (error) {
       throw new InternalServerErrorException(error.message);
     }

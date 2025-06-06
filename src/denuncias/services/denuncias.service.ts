@@ -27,6 +27,7 @@ import { FilterComplaintDto } from '../dtos/filter.dto';
 import { createDocx } from '../../utils/docxGen';
 import { DenunciaEstadosService } from './denuncia-estados.service';
 import { FtpService } from 'src/ftp/ftp.service';
+import { QueueService } from 'src/queue/queue.service';
 import { Readable, Stream } from 'stream';
 import { TemplateService } from 'src/template/template.service';
 import * as FormData from 'form-data';
@@ -43,6 +44,7 @@ import { generatePDF } from '../utils/generatePDF';
 
 import config from 'src/config';
 import { ConfigType } from '@nestjs/config';
+import { DenunciaTasksService } from './denuncia-task.service';
 
 @Injectable()
 export class DenunciasService {
@@ -50,6 +52,29 @@ export class DenunciasService {
   private _dirRechazadas =
     process.env.FTP_FOLDER_RECHAZADAS || '/images/omic-admin-dev/rechazadas';
   private readonly startDateDenuncia: string;
+  private fusionarDenunciadosYPostales(denunciados: any[], postales: any[]) {
+    const mapa = new Map();
+
+    for (const d of denunciados) {
+      mapa.set(d.id, { ...d, tipoEnvioArray: 'email' });
+    }
+
+    for (const p of postales) {
+      if (mapa.has(p.id)) {
+        mapa.set(p.id, {
+          ...mapa.get(p.id),
+          codPostal: p.codPostal,
+          localidad: p.localidad,
+          tipoEnvioArray: 'ambos',
+        });
+      } else {
+        mapa.set(p.id, { ...p, tipoEnvioArray: 'postal' });
+      }
+    }
+
+    return Array.from(mapa.values());
+  }
+
   constructor(
     @InjectRepository(Denuncia) private denunciaRepo: Repository<Denuncia>,
     private autorizadoService: AutorizadosService,
@@ -65,9 +90,11 @@ export class DenunciasService {
     private denunciadoDenunciaService: DenunciadoDenunciaService,
     private direccionesEnviadasService: DireccionesEnviadasService,
     private movimientoService: MovimientoService,
+    private denunciaTasksService: DenunciaTasksService,
     @Inject(forwardRef(() => CausasService))
     private causasService: CausasService,
     @Inject(config.KEY) private configService: ConfigType<typeof config>,
+    private readonly queueService: QueueService,
   ) {
     this.startDateDenuncia =
       this.configService.startDateDenuncia || '2024-01-01';
@@ -104,129 +131,79 @@ export class DenunciasService {
         'denunciante',
         'denunciadoDenuncia',
         'denunciadoDenuncia.denunciado',
-        // 'denunciados.empresa',
-        // 'foja',
-        // 'foja.archivos',
-        // 'archivos',
-        // 'denunciaDocumentos',
-        // 'denunciaDocumentos.documentoTipo',
         'denunciaEstados',
       ];
-      if (params) {
-        const where: FindOptionsWhere<Denuncia> = {};
-        const { limit, offset } = params;
-        const {
-          denunciante,
-          dni,
-          email,
-          estado,
-          date,
-          ultMovimiento,
-          orden = 'DESC',
-        } = params;
 
-        if (this.startDateDenuncia) {
-          where.fecha = MoreThanOrEqual(
-            new Date(this.startDateDenuncia.replaceAll('-', '/')),
-          );
-        }
+      if (!params) return this.denunciaRepo.find({ relations });
 
-        // if (nombre && !apellido)
-        //   where.denunciante = { nombre: Like(`%${nombre}%`) };
-        // if (apellido && !nombre)
-        //   where.denunciante = { apellido: Like(`%${apellido}%`) };
-        // if (nombre && apellido)
-        //   where.denunciante = {
-        //     nombre: Like(`%${nombre}%`),
-        //     apellido: Like(`%${apellido}%`),
-        //   };
-        if (date) {
-          where.fecha = new Date(date.replaceAll('-', '/'));
-        }
-        if (ultMovimiento) {
-          const fechaInicio = new Date(ultMovimiento);
-          fechaInicio.setUTCHours(0, 0, 0, 0);
+      const {
+        denunciante,
+        dni,
+        email,
+        estado,
+        date,
+        ultMovimiento,
+        orden = 'DESC',
+        limit,
+        offset,
+      } = params;
 
-          const fechaFin = new Date(ultMovimiento);
-          fechaFin.setUTCHours(23, 59, 59, 999);
+      const where: FindOptionsWhere<Denuncia> = {};
 
-          where.ultMovimiento = Between(fechaInicio, fechaFin);
-        }
-
-        if (denunciante) {
-          const words = denunciante.trim().split(' ');
-          const denuncianteApellido = words.map((e) => {
-            let denuncianteWhere: {
-              apellido: FindOperator<string>;
-              dni?: FindOperator<string>;
-              email?: FindOperator<string>;
-            } = {
-              apellido: Like(`%${e}%`),
-            };
-            if (dni) {
-              denuncianteWhere = { ...denuncianteWhere, dni: Like(`%${dni}%`) };
-            }
-            if (email)
-              denuncianteWhere = {
-                ...denuncianteWhere,
-                email: Like(`%${email}%`),
-              };
-
-            return denuncianteWhere;
-          });
-          const denuncianteNombre = words.map((e) => {
-            let denuncianteWhere: {
-              nombre: FindOperator<string>;
-              dni?: FindOperator<string>;
-              email?: FindOperator<string>;
-            } = {
-              nombre: Like(`%${e}%`),
-            };
-            if (dni) {
-              denuncianteWhere = { ...denuncianteWhere, dni: Like(`%${dni}%`) };
-            }
-            if (email)
-              denuncianteWhere = {
-                ...denuncianteWhere,
-                email: Like(`%${email}%`),
-              };
-
-            return denuncianteWhere;
-          });
-
-          where.denunciante = [...denuncianteApellido, ...denuncianteNombre];
-          // {
-          // nombre: words.map((e) => Like(`%${e}%`)),
-          // apellido: words.map((e) => Like(`%${e}%`)),
-          // };
-        } else {
-          if (dni) where.denunciante = { dni: Like(`%${dni}%`) };
-          if (email) where.denunciante = { email: Like(`%${email}%`) };
-        }
-        // if (fechaInicio) where.createdAt = Like(`%${fechaInicio}%`);
-        // if (estadoGeneral) where.estadoGeneral = estadoGeneral;
-
-        if (estado) {
-          where.estado = Equal(estado);
-        } else {
-          where.estado = In([1, 2, 3]);
-        }
-
-        if (!limit) {
-          return this.denunciaRepo.find({ relations, where });
-        }
-
-        return this.denunciaRepo.find({
-          relations,
-          where,
-          take: limit,
-          skip: offset,
-          order: {
-            id: orden,
-          },
-        });
+      if (date) {
+        const inicio = new Date(date);
+        inicio.setUTCHours(0, 0, 0, 0);
+        const fin = new Date(date);
+        fin.setUTCHours(23, 59, 59, 999);
+        where.fecha = Between(inicio, fin);
+      } else if (this.startDateDenuncia) {
+        where.fecha = MoreThanOrEqual(
+          new Date(this.startDateDenuncia.replaceAll('-', '/')),
+        );
       }
-      return this.denunciaRepo.find({ relations });
+
+      if (ultMovimiento) {
+        const inicio = new Date(ultMovimiento);
+        inicio.setUTCHours(0, 0, 0, 0);
+        const fin = new Date(ultMovimiento);
+        fin.setUTCHours(23, 59, 59, 999);
+        where.ultMovimiento = Between(inicio, fin);
+      }
+
+      if (denunciante) {
+        const palabras = denunciante.trim().split(' ');
+
+        const apellidoMatch = palabras.map((p) => ({
+          apellido: Like(`%${p}%`),
+          ...(dni && { dni: Like(`%${dni}%`) }),
+          ...(email && { email: Like(`%${email}%`) }),
+        }));
+
+        const nombreMatch = palabras.map((p) => ({
+          nombre: Like(`%${p}%`),
+          ...(dni && { dni: Like(`%${dni}%`) }),
+          ...(email && { email: Like(`%${email}%`) }),
+        }));
+
+        where.denunciante = [...apellidoMatch, ...nombreMatch];
+      } else if (dni || email) {
+        where.denunciante = {
+          ...(dni && { dni: Like(`%${dni}%`) }),
+          ...(email && { email: Like(`%${email}%`) }),
+        };
+      }
+
+      where.estado = estado ? Equal(estado) : In([1, 2, 3]);
+
+      const queryOptions = {
+        relations,
+        where,
+        order: { id: orden },
+        ...(limit && { take: limit }),
+        ...(offset && { skip: offset }),
+      };
+
+      return this.denunciaRepo.find(queryOptions);
     } catch (error) {
       throw new InternalServerErrorException(error.message);
     }
@@ -347,6 +324,630 @@ export class DenunciasService {
     };
   }
 
+  async aprobarDenuncia(data) {
+    console.log(
+      `📦 [APROBAR] Encolando tarea de aprobación para denuncia #${data.id}`,
+    );
+    const { id, userId, nro_expediente, envio_tipo, meet_link } = data;
+
+    const relations = [
+      'denunciante',
+      'denunciadoDenuncia',
+      'denunciadoDenuncia.denunciado',
+    ];
+
+    const denuncia = await this.denunciaRepo.findOne({
+      where: { id },
+      relations,
+    });
+
+    if (!denuncia) throw new NotFoundException('Denuncia no encontrada');
+
+    const estado = await this.estadosService.findByKey('ESPERA_AUDIENCIA');
+    this.denunciaRepo.merge(denuncia, { estado });
+
+    const denunciaEstado = await this.denunciaEstadosService.create({
+      denunciaId: id,
+      estadoId: estado.id,
+      usuarioId: userId,
+    });
+
+    await this.datosNotificacionService.create({
+      denuncia,
+      denunciaEstado,
+      envio_tipo,
+      meet_link,
+      id_usuario: userId,
+    });
+
+    denuncia.ultMovimiento = new Date();
+    denuncia.nroExpediente = nro_expediente;
+
+    await this.movimientoService.create({
+      denuncia,
+      tabla_afectada: 'Denuncia_Estados',
+      entidad_id: denunciaEstado.denunciaEstadosId,
+      tipo_cambio: 'CREATE',
+      descripcion: 'Aprobación inicial de la denuncia.',
+      valor_nuevo: estado.descripcion,
+      usuarioId: userId,
+    });
+
+    const resDenuncia = this.denunciaRepo.save(denuncia);
+
+    await this.causasService.create({
+      anioCausa: new Date().getFullYear(),
+      denunciaId: denuncia.id,
+    });
+
+    const jobId = `subir-documentos-${Date.now()}-${id}`;
+
+    await this.denunciaTasksService.createTask({
+      denuncia,
+      etapa: 'subir-documentos',
+      prioridad: 1,
+      jobId,
+    });
+
+    await this.queueService.addDenunciaTask(
+      'subir-documentos',
+      { ...data, jobId },
+      {
+        jobId,
+        priority: 2,
+      },
+    );
+
+    return resDenuncia;
+  }
+
+  async subirDocumentos(data: any) {
+    const {
+      id,
+      denunciante_email,
+      nro_expediente,
+      envio_tipo,
+      meet_link,
+      date_link,
+      time_link,
+    } = data;
+
+    try {
+      console.log(
+        `📥 [DOCUMENTOS] Iniciando generación de documentos para Denuncia #${id}`,
+      );
+
+      const denuncia = await this.denunciaRepo.findOne({
+        where: { id },
+        relations: [
+          'denunciante',
+          'denunciadoDenuncia',
+          'denunciadoDenuncia.denunciado',
+          'archivos',
+        ],
+      });
+
+      if (!denuncia) throw new NotFoundException('Denuncia no encontrada');
+
+      const task = await this.denunciaTasksService.findTaskByJobId(data.jobId);
+
+      const ruta = `${this._dir}/${id}`;
+      console.log(`📁 [DOCUMENTOS] Creando carpeta en FTP: ${ruta}`);
+      await this.queueService.addTask(
+        { tipo: 'create-dir', file: { remotePath: ruta } },
+        { jobId: `crear-dir-${id}`, priority: 1, removeOnComplete: true },
+      );
+
+      const info = this.dtoInfo({
+        denuncia,
+        nro_expediente,
+        denunciante_email,
+        meet_link,
+        time_link,
+        date_link,
+        envio_tipo,
+      });
+
+      const subirArchivo = async (buffer, filename) => {
+        console.log(`📤 [UPLOAD] Encolando subida: ${filename}`);
+        return this.queueService.addTask(
+          {
+            tipo: 'upload',
+            file: {
+              fileName: filename,
+              content: buffer.toString('base64'),
+              remotePath: ruta,
+            },
+          },
+          {
+            priority: 2,
+            jobId: `upload-${id}-${filename}`,
+            removeOnComplete: { age: 120 },
+          },
+        );
+      };
+
+      const saveDocumento = async (filename: string, key: string) => {
+        const tipo = await this.documentosTiposService.findByKey(key);
+        await this.denunciaDocumentosService.create({
+          denunciaId: denuncia.id,
+          documentoTipoId: tipo.id,
+          fileName: filename,
+          path: `${ruta}/${filename}`,
+        });
+        console.log(`✅ [DB] Documento registrado en BD: ${filename}`);
+      };
+
+      // 📝 Carátula y apertura
+      const docs = [
+        {
+          key: 'CARATULA',
+          file: `${id}_CARATULA.docx`,
+          template: 'CARATULA.docx',
+        },
+        {
+          key: 'APERTURA_INSTANCIA',
+          file: `${id}_APERTURA_INSTANCIA.docx`,
+          template: 'APERTURA_DE_INSTANCIA.docx',
+        },
+      ];
+
+      for (const doc of docs) {
+        console.log(`🧾 [DOCX] Generando documento: ${doc.file}`);
+        const buffer = await this.templateService.createDocx(
+          info,
+          doc.template,
+        );
+        await subirArchivo(buffer, doc.file);
+        await saveDocumento(doc.file, doc.key);
+      }
+
+      // 📄 Documento de denuncia
+      console.log(`🧾 [DOCX] Generando documento de denuncia`);
+      const denunciaData = {
+        ...denuncia,
+        denunciados: denuncia.denunciadoDenuncia.map((e) => ({
+          ...e.denunciado,
+          dni: e.denunciado.dniCuilCuit,
+          codpostal: e.denunciado.codPostal,
+          tel: e.denunciado.telefono,
+          telalt: e.denunciado.telefonoAlter,
+        })),
+      };
+
+      const docDenuncia = await this.templateService.createDocx(
+        denunciaData,
+        'DENUNCIA.docx',
+      );
+      const fileDenuncia = `${id}_DENUNCIA.docx`;
+      await subirArchivo(docDenuncia, fileDenuncia);
+      await saveDocumento(fileDenuncia, 'DOCUMENTO_AGREGADO');
+
+      // 📩 Generar y subir PDF de denunciante
+      const pdfDenunciante = await generatePDF(info, 'denunciante');
+      const fileDenunciante = `${id}_CEDULA_DENUNCIANTE.pdf`;
+      await subirArchivo(pdfDenunciante, fileDenunciante);
+      await saveDocumento(fileDenunciante, 'CEDULA_APERTURA_DENUNCIANTE');
+
+      // 📩 Generar y subir PDF de cada denunciado
+      const listaDenunciados = this.fusionarDenunciadosYPostales(
+        data.denunciados || [],
+        data.postales || [],
+      );
+
+      for (const d of listaDenunciados) {
+        const pdf = await generatePDF(
+          {
+            ...info,
+            denunciado: d.nombre,
+            email_denunciado: ['email', 'ambos'].includes(d.tipoEnvioArray)
+              ? d.email
+              : 'No disponible',
+            direccion_denunciado: ['postal', 'ambos'].includes(d.tipoEnvioArray)
+              ? `${d.codPostal ?? ''} ${d.localidad ?? ''}`
+              : 'No disponible',
+            envio_tipo,
+          },
+          'denunciado',
+        );
+        const file = `${id}_CEDULA_DENUNCIADO_${d.id}.pdf`;
+        await subirArchivo(pdf, file);
+        await saveDocumento(file, 'CEDULA_APERTURA_DENUNCIADO');
+      }
+
+      const jobId = `notificar-${Date.now()}-${id}`;
+
+      await this.denunciaTasksService.createTask({
+        denuncia,
+        etapa: 'notificar-por-correo',
+        prioridad: 2,
+        jobId,
+      });
+      console.log(
+        `📌 [TASK] Etapa NOTIFICACION encolada para denuncia #${id} con JobID ${jobId}`,
+      );
+
+      await this.queueService.addDenunciaTask(
+        'notificar-por-correo',
+        { ...data, jobId },
+        {
+          jobId,
+          priority: 3,
+        },
+      );
+
+      if (task) {
+        await this.denunciaTasksService.markTaskAsExecuted(task.id);
+      }
+
+      return {
+        message:
+          '📄 Documentos generados, cédulas subidas y tarea marcada como completada.',
+      };
+    } catch (error) {
+      console.error(`❌ [ERROR] ${error.message}`);
+      const task = await this.denunciaTasksService.findTaskByJobId(data.jobId);
+      if (task) {
+        await this.denunciaTasksService.markTaskAsFailed(
+          task.id,
+          error?.message || 'Error desconocido',
+        );
+      }
+
+      throw error;
+    }
+  }
+
+  async notificarPorCorreo(data) {
+    const {
+      id,
+      denunciante_email,
+      denunciante_postal,
+      denunciados = [],
+      postales = [],
+      meet_link,
+      date_link,
+      time_link,
+      userId,
+      nro_expediente,
+      envio_tipo,
+      jobId,
+    } = data;
+
+    try {
+      const denuncia = await this.denunciaRepo.findOne({
+        where: { id },
+        relations: [
+          'denunciante',
+          'denunciadoDenuncia',
+          'denunciadoDenuncia.denunciado',
+          'archivos',
+        ],
+      });
+      if (!denuncia) throw new NotFoundException('Denuncia no encontrada');
+
+      const task = await this.denunciaTasksService.findTaskByJobId(jobId);
+      const datosNotificacion =
+        await this.datosNotificacionService.findByDenuncia(id);
+      if (!datosNotificacion)
+        throw new NotFoundException('Datos de notificación no encontrados');
+
+      const ruta = `${this._dir}/${id}`;
+      const info = this.dtoInfo({
+        denuncia,
+        nro_expediente,
+        denunciante_email,
+        meet_link,
+        time_link,
+        date_link,
+        envio_tipo,
+      });
+
+      const registerAddress = async (persona, tipo, esDenunciante = false) => {
+        const payload = {
+          datosNotificacionId: datosNotificacion.id,
+          ...(esDenunciante
+            ? { denuncianteId: persona.id }
+            : { denunciadoId: persona.id }),
+        };
+
+        if (esDenunciante && tipo === 'ambos') {
+          await this.direccionesEnviadasService.create({
+            ...payload,
+            email: persona.email,
+            codPostal: persona.codPostal,
+          });
+        } else {
+          if (['email', 'ambos'].includes(tipo)) {
+            await this.direccionesEnviadasService.create({
+              ...payload,
+              email: persona.email,
+            });
+          }
+          if (['postal', 'ambos'].includes(tipo)) {
+            await this.direccionesEnviadasService.create({
+              ...payload,
+              codPostal: persona.codPostal,
+            });
+          }
+        }
+      };
+
+      await registerAddress(
+        {
+          id: denuncia.denunciante.id,
+          email: denunciante_email,
+          codPostal: denunciante_postal,
+        },
+        envio_tipo,
+        true,
+      );
+      for (const d of denunciados) await registerAddress(d, envio_tipo);
+      for (const p of postales) await registerAddress(p, envio_tipo);
+
+      const archivos = await Promise.all(
+        denuncia.archivos.map(async (archivo) => {
+          const job = await this.queueService.addTask(
+            { tipo: 'download', file: { remotePath: archivo.descripcion } },
+            {
+              jobId: `descarga-${archivo.id}`,
+              priority: 4,
+              removeOnComplete: true,
+            },
+          );
+          const base64 = await job.waitUntilFinished(
+            this.queueService.getQueueEvents(),
+          );
+          return {
+            filename: archivo.descripcion.split('/').pop(),
+            file: Buffer.from(base64, 'base64'),
+          };
+        }),
+      );
+
+      const pdfDenunciante = await generatePDF(info, 'denunciante');
+      const denuncianteFiles = [
+        { filename: `${id}_CEDULA_DENUNCIANTE.pdf`, file: pdfDenunciante },
+      ];
+
+      const listaDenunciados = this.fusionarDenunciadosYPostales(
+        denunciados,
+        postales,
+      );
+      const denunciadosFiles = [];
+
+      for (const d of listaDenunciados) {
+        const pdf = await generatePDF(
+          {
+            ...info,
+            denunciado: d.nombre,
+            email_denunciado: ['email', 'ambos'].includes(d.tipoEnvioArray)
+              ? d.email
+              : 'No disponible',
+            direccion_denunciado: ['postal', 'ambos'].includes(d.tipoEnvioArray)
+              ? `${d.codPostal ?? ''} ${d.localidad ?? ''}`
+              : 'No disponible',
+            envio_tipo,
+          },
+          'denunciado',
+        );
+        denunciadosFiles.push({
+          idDenunciado: d.id,
+          filename: `${id}_CEDULA_DENUNCIADO_${d.id}.pdf`,
+          file: pdf,
+        });
+      }
+
+      const docxDenuncia = await this.templateService.createDocx(
+        {
+          ...denuncia,
+          denunciados: denuncia.denunciadoDenuncia.map((e) => ({
+            ...e.denunciado,
+            dni: e.denunciado.dniCuilCuit,
+            codpostal: e.denunciado.codPostal,
+            tel: e.denunciado.telefono,
+            telalt: e.denunciado.telefonoAlter,
+          })),
+        },
+        'DENUNCIA.docx',
+      );
+
+      denunciadosFiles.push({
+        filename: `${id}_DENUNCIA.docx`,
+        file: docxDenuncia,
+      });
+
+      const emailsEnviados = [];
+
+      const denuncianteFile = {
+        key: 'CEDULA_APERTURA_DENUNCIANTE',
+        filename: `${id}_CEDULA_DENUNCIANTE.pdf`,
+        message: `Su denuncia contra ${info.denunciado} fue`,
+        file: pdfDenunciante,
+      };
+
+      const sendEmail = async (
+        email,
+        message,
+        files,
+        idTipoDoc = 7,
+        key = '',
+      ) => {
+        const form = new FormData();
+        const subject = `EXPEDIENTE: ${nro_expediente}/${denuncia.denunciante.apellido.toUpperCase()}/${new Date().getFullYear()}/${
+          denuncia.denunciante.nombre.toUpperCase() +
+          ' ' +
+          denuncia.denunciante.apellido.toUpperCase()
+        } C/ ${denuncia.denunciadoDenuncia[0].denunciado.nombre.toUpperCase()} S/ PRESUNTA INFRACCIÓN A LA LEY 24.240`;
+
+        console.log(
+          `📧 [EMAIL] Enviando correo a ${email} con asunto: ${subject}`,
+        );
+
+        const data = [
+          {
+            subject,
+            email,
+            cc: 'omicsannicolas@sannicolas.gob.ar',
+            bodyEmail: { message },
+            files: files.map((f) => f.filename),
+          },
+        ];
+        form.append('method', 'denuncia_aprobada');
+        form.append('data', JSON.stringify({ data }));
+        form.append('hasFiles', 'true');
+
+        files.forEach((f, index) => {
+          if (!f?.file || !f?.filename) {
+            console.warn(`⚠️ Archivo inválido en posición ${index}:`, f);
+          } else {
+            console.log(
+              `✅ ${f.filename} listo para enviar. Tamaño: ${f.file.length}`,
+            );
+          }
+          form.append(f.filename, f.file, { filename: f.filename });
+        });
+
+        await axios.post(
+          'https://notificaciones-8abd2b855cde.herokuapp.com/api/notifications/notifications-email',
+          form,
+          { headers: { 'api-key': 'fJfCznx805geZEjuvAU533raN4HNh4WB' } },
+        );
+
+        // Generar datos para comprobante
+        const now = new Date();
+        const formatFechaHora = (fecha) =>
+          fecha.toLocaleString('es-AR', {
+            timeZone: 'America/Argentina/Buenos_Aires',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          });
+        if (email !== 'omicsannicolas@sannicolas.gob.ar') {
+          emailsEnviados.push({
+            id: idTipoDoc,
+            key,
+            email,
+            message:
+              message === 'La denuncia en su contra fue' ||
+              message === denuncianteFile.message
+                ? `${message}: Aprobada`
+                : message,
+            fechaHora: formatFechaHora(now),
+            documentos: files.map((f) => {
+              const sizeInBytes = f.file.length;
+              let weight: string;
+              if (sizeInBytes < 1024) {
+                weight = `${sizeInBytes} B`;
+              } else if (sizeInBytes < 1024 * 1024) {
+                weight = `${(sizeInBytes / 1024).toFixed(2)} KB`;
+              } else {
+                weight = `${(sizeInBytes / (1024 * 1024)).toFixed(2)} MB`;
+              }
+
+              return {
+                name: f.filename,
+                weight,
+              };
+            }),
+          });
+        }
+      };
+
+      if (['email', 'ambos'].includes(envio_tipo)) {
+        await sendEmail(
+          denunciante_email,
+          `Su denuncia contra ${info.denunciado} fue aprobada.`,
+          denuncianteFiles,
+          7,
+          'COMPROBANTE_NOTIFICACION_DENUNCIANTE',
+        );
+
+        for (const d of denunciados) {
+          const files = denunciadosFiles.filter(
+            (f) => f.idDenunciado === d.id || !('idDenunciado' in f),
+          );
+          await sendEmail(
+            d.email,
+            'La denuncia en su contra fue aprobada.',
+            [...files, ...archivos],
+            8,
+            'COMPROBANTE_NOTIFICACION_DENUNCIADO',
+          );
+        }
+      }
+
+      await sendEmail(
+        'omicsannicolas@sannicolas.gob.ar',
+        `Documentos de la denuncia Expte: Nº ${info.nro_expediente}`,
+        [...denuncianteFiles, ...denunciadosFiles, ...archivos],
+      );
+
+      for (const email of emailsEnviados) {
+        console.log(
+          `📧 Email enviado a ${email.email} (${email.fechaHora}):`,
+          email.message,
+          email.key,
+        );
+        const pdf = await generatePDF(email, 'notificacion');
+        const filename = `${email.key}_${
+          email.email.split('@')[0]
+        }_APROBADO.pdf`;
+        const remotePath = `${ruta}/${filename}`;
+
+        await this.ftpService.fileUpload(Readable.from(pdf), remotePath);
+
+        await this.denunciaDocumentosService.create({
+          denunciaId: denuncia.id,
+          documentoTipoId: email.id,
+          fileName: filename,
+          path: remotePath,
+        });
+      }
+
+      if (task) {
+        await this.denunciaTasksService.markTaskAsExecuted(task.id);
+        console.log(`☑️ Tarea marcada como ejecutada: ${task.jobId}`);
+      }
+
+      return {
+        message: 'Correos enviados, documentos procesados y tarea completada.',
+      };
+    } catch (error) {
+      console.error(`❌ [ERROR] ${error.message}`);
+      console.error(`🧾 [STACK] ${error.stack}`);
+
+      const task = await this.denunciaTasksService.findTaskByJobId(jobId);
+      if (task) {
+        await this.denunciaTasksService.markTaskAsFailed(
+          task.id,
+          error?.message || 'Error desconocido',
+        );
+      }
+
+      throw error;
+    }
+  }
+
+  async procesarDenunciaCompleta(data: any) {
+    const { id } = data;
+
+    console.log(`📦 [PROCESAR] Encolando tareas para denuncia #${id}`);
+
+    const aprobacion = await this.aprobarDenuncia(data);
+    console.log(`✅ [APROBACION] Denuncia #${id} aprobada.`);
+
+    const jobs = await this.queueService.getWaiting();
+    console.log(
+      'Jobs en espera:',
+      jobs.map((j) => j.name),
+    );
+
+    return aprobacion;
+  }
+
   async aprobbed(data) {
     const {
       id,
@@ -377,11 +978,64 @@ export class DenunciasService {
         relations,
       });
 
-      if (!denuncia) {
-        throw new NotFoundException('Denuncia no encontrada');
-      }
+      if (!denuncia) throw new NotFoundException('Denuncia no encontrada');
 
-      const archivos = await this.getArchivosAdjuntos(denuncia);
+      const info = this.dtoInfo({
+        denuncia,
+        nro_expediente,
+        denunciante_email,
+        meet_link,
+        time_link,
+        date_link,
+        envio_tipo,
+      });
+
+      const ruta = `${this._dir}/${id}`;
+
+      // 🟡 Crear carpeta en FTP con prioridad alta
+      await this.queueService.addTask(
+        { tipo: 'create-dir', file: { remotePath: ruta } },
+        { jobId: `crear-dir-${id}`, priority: 1, removeOnComplete: true },
+      );
+
+      const downloadJobs = await Promise.all(
+        denuncia.archivos.map(async (archivo) => {
+          const job = await this.queueService.addTask(
+            {
+              tipo: 'download',
+              file: { remotePath: archivo.descripcion },
+            },
+            {
+              jobId: `descarga-${archivo.id}`,
+              priority: 5,
+              removeOnComplete: {
+                age: 120,
+              },
+            },
+          );
+          return { archivo, job };
+        }),
+      );
+
+      const subirArchivo = async (buffer, remotePath, filename) => {
+        await this.queueService.addTask(
+          {
+            tipo: 'upload',
+            file: {
+              fileName: filename,
+              remotePath,
+              content: buffer.toString('base64'),
+            },
+          },
+          {
+            jobId: `upload-${filename}`,
+            priority: 2,
+            removeOnComplete: {
+              age: 120,
+            },
+          },
+        );
+      };
 
       const estado = await this.estadosService.findByKey('ESPERA_AUDIENCIA');
       this.denunciaRepo.merge(denuncia, { estado });
@@ -420,7 +1074,6 @@ export class DenunciasService {
               email: persona.email,
             });
           }
-
           if (tipo === 'postal' || tipo === 'ambos') {
             await this.direccionesEnviadasService.create({
               ...payload,
@@ -455,19 +1108,6 @@ export class DenunciasService {
         }
       }
 
-      const info = this.dtoInfo({
-        denuncia,
-        nro_expediente,
-        denunciante_email,
-        meet_link,
-        time_link,
-        date_link,
-        envio_tipo,
-      });
-
-      const ruta = `${this._dir}/${id}`;
-      await this.ftpService.createDir(ruta);
-
       const generateAndSaveDocument = async (key, filename, template) => {
         const infoCorregido = {
           ...info,
@@ -481,20 +1121,19 @@ export class DenunciasService {
             postales[0]?.domicilio || denunciados[0]?.domicilio || '',
           ),
         };
-        const content = (await this.templateService.createDocx(
+
+        const content = await this.templateService.createDocx(
           infoCorregido,
           template,
-        )) as Buffer;
-        const streamFile = Readable.from(content);
-        const remotePath = `${ruta}/${filename}`;
-        await this.ftpService.fileUpload(streamFile, remotePath);
+        );
+        await subirArchivo(content, ruta, filename);
 
         const documentoTipo = await this.documentosTiposService.findByKey(key);
         await this.denunciaDocumentosService.create({
           denunciaId: denuncia.id,
           documentoTipoId: documentoTipo.id,
           fileName: filename,
-          path: remotePath,
+          path: `${ruta}/${filename}`,
         });
 
         return { filename, content };
@@ -522,11 +1161,7 @@ export class DenunciasService {
       };
 
       // 📂 Subir PDF del denunciante al FTP
-      const remotePathDenunciante = `${ruta}/${denuncianteFile.filename}`;
-      await this.ftpService.fileUpload(
-        Readable.from(denunciantePDF),
-        remotePathDenunciante,
-      );
+      await subirArchivo(denunciantePDF, ruta, denuncianteFile.filename);
 
       const documentoTipoDenunciante =
         await this.documentosTiposService.findByKey(denuncianteFile.key);
@@ -534,7 +1169,7 @@ export class DenunciasService {
         denunciaId: denuncia.id,
         documentoTipoId: documentoTipoDenunciante.id,
         fileName: denuncianteFile.filename,
-        path: remotePathDenunciante,
+        path: `${ruta}/${id}_CEDULA_DENUNCIANTE.pdf`,
       });
 
       // 📄 Generar PDFs para cada denunciado
@@ -610,9 +1245,20 @@ export class DenunciasService {
         throw new Error('🚨 Error: No se pudo generar el archivo de denuncia.');
       }
 
-      await this.ftpService.fileUpload(
-        Readable.from(denunciaFile),
-        remotePathDenuncia,
+      await this.queueService.addTask(
+        {
+          tipo: 'upload',
+          file: {
+            fileName: filenameDenuncia,
+            content: denunciaFile.toString('base64'),
+            remotePath: ruta,
+          },
+        },
+        {
+          priority: 1,
+          jobId: `upload-denuncia-${id}`,
+          removeOnComplete: true,
+        },
       );
 
       denunciadosFiles.push({
@@ -664,7 +1310,7 @@ export class DenunciasService {
         postales,
       );
 
-      console.log('listaDenunciados', listaDenunciados);
+      const uploadJobs = [];
 
       for (const denunciado of listaDenunciados) {
         const postalDenunciado = postales.find((p) => p.id === denunciado.id);
@@ -680,19 +1326,34 @@ export class DenunciasService {
             direccion_denunciado:
               denunciado.tipoEnvioArray === 'postal' ||
               denunciado.tipoEnvioArray === 'ambos'
-                ? `${postalDenunciado.codPostal} ${postalDenunciado.localidad}`
+                ? `${postalDenunciado?.codPostal || ''} ${
+                    postalDenunciado?.localidad || ''
+                  }`
                 : 'No disponible',
-            envio_tipo: envio_tipo,
+            envio_tipo,
           },
           'denunciado',
         );
 
         const filename = `${id}_CEDULA_DENUNCIADO_${denunciado.id}.pdf`;
-        const remotePathDenunciado = `${ruta}/${filename}`;
-        await this.ftpService.fileUpload(
-          Readable.from(denunciadoPDF),
-          remotePathDenunciado,
+        const remotePath = `${ruta}/${filename}`;
+        const job = await this.queueService.addTask(
+          {
+            tipo: 'upload',
+            file: {
+              fileName: filename,
+              content: denunciadoPDF.toString('base64'),
+              remotePath: ruta,
+            },
+          },
+          {
+            priority: 1,
+            jobId: `upload-denunciado-${denunciado.id}`,
+            removeOnComplete: true,
+          },
         );
+
+        uploadJobs.push(job);
 
         denunciadosFiles.push({
           idDenunciado: denunciado.id,
@@ -708,7 +1369,7 @@ export class DenunciasService {
           denunciaId: denuncia.id,
           documentoTipoId: documentoTipoDenunciado.id,
           fileName: filename,
-          path: remotePathDenunciado,
+          path: remotePath,
         });
       }
 
@@ -718,6 +1379,12 @@ export class DenunciasService {
           file: denunciantePDF,
         },
       ];
+
+      await Promise.all(
+        uploadJobs.map((j) =>
+          j.waitUntilFinished(this.queueService.getQueueEvents()),
+        ),
+      );
 
       const emailsEnviados = [];
 
@@ -847,6 +1514,26 @@ export class DenunciasService {
           7,
           'COMPROBANTE_NOTIFICACION_DENUNCIANTE',
         );
+      }
+
+      const archivos: {
+        buffer: Buffer;
+        filename: string;
+        descripcion: string;
+      }[] = [];
+
+      for (const { archivo, job } of downloadJobs) {
+        const bufferBase64 = await job.waitUntilFinished(
+          this.queueService.getQueueEvents(),
+        );
+        const buffer = Buffer.from(bufferBase64, 'base64');
+        const filename = archivo.descripcion.split('/omic/')[1];
+
+        archivos.push({
+          buffer,
+          filename,
+          descripcion: archivo.descripcion,
+        });
       }
 
       // 📩 Enviar email a cada denunciado
@@ -1086,9 +1773,22 @@ export class DenunciasService {
     this.ftpService.close();
 
     if (denuncia.estado.key === 'ESPERA_AUDIENCIA') {
-      const causa = await this.causasService.findCausaByDenunciaId(denuncia.id);
-      if (causa) {
-        await this.causasService.deleteCausa(causa.nroCausa);
+      try {
+        const causa = await this.causasService.findCausaByDenunciaId(
+          denuncia.id,
+        );
+
+        if (causa) {
+          await this.causasService.deleteCausa(causa.nroCausa);
+        } else {
+          console.log(
+            `ℹ️ No existe causa registrada para la denuncia #${denuncia.id}`,
+          );
+        }
+      } catch (err) {
+        console.log(
+          `ℹ️ No existe causa registrada para la denuncia #${denuncia.id}`,
+        );
       }
     }
 
@@ -1276,7 +1976,7 @@ export class DenunciasService {
     );
   }
 
-  private async getArchivosAdjuntos(denuncia) {
+  private async getArchivosAdjuntos(denuncia): Promise<any[]> {
     console.log('📥 Descargando archivos desde el FTP...');
 
     const archivos = [];
@@ -1285,7 +1985,8 @@ export class DenunciasService {
       console.log(`📂 Descargando: ${archivo.descripcion}`);
 
       try {
-        const buffer = await this.ftpService.downloadFileAsBuffer(
+        // ⬇️ Nueva implementación usando la cola
+        const buffer = await this.queueService.downloadFile(
           archivo.descripcion,
         );
         const filename = archivo.descripcion.split('/omic/')[1];

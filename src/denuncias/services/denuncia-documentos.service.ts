@@ -26,6 +26,10 @@ export class DenunciaDocumentosService {
   }
 
   async delete(denunciaDocumento: DenunciaDocumentos) {
+    console.log(
+      'Datos antes de eliminar DenunciaDocumentos:',
+      denunciaDocumento.denunciaDocumentosId,
+    );
     return this.denunciaDocumentosRepo.delete({
       denunciaDocumentosId: denunciaDocumento.denunciaDocumentosId,
     });

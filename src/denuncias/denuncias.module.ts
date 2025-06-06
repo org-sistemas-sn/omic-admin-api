@@ -30,6 +30,9 @@ import { DireccionesEnviadasService } from './services/direcciones-enviadas.serv
 import { MovimientoModule } from 'src/movimientos/movimientos.module';
 import { CausasModule } from 'src/causas/causas.module';
 import { CausasService } from 'src/causas/services/causa.service';
+import { QueueModule } from 'src/queue/queue.module';
+import { DenunciaTasks } from './entities/denuncia-task.entity';
+import { DenunciaTasksService } from './services/denuncia-task.service';
 
 @Module({
   imports: [
@@ -45,11 +48,13 @@ import { CausasService } from 'src/causas/services/causa.service';
       DenunciaDocumentos,
       DatosNotificacion,
       DireccionesEnviadas,
+      DenunciaTasks,
     ]),
     FojasModule,
     DocumentosTipoModule,
     MovimientoModule,
     forwardRef(() => CausasModule),
+    QueueModule,
   ],
   providers: [
     DenunciasService,
@@ -65,6 +70,7 @@ import { CausasService } from 'src/causas/services/causa.service';
     DenunciadoDenunciaService,
     DatosNotificacionService,
     DireccionesEnviadasService,
+    DenunciaTasksService,
   ],
   controllers: [DenunciasController],
   exports: [DenunciasService],
