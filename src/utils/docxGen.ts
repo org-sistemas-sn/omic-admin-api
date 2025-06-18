@@ -26,7 +26,7 @@ const formatData = (values) => {
     },
     denunciados: values?.denunciadoDenuncia?.map((d) => ({
       nombre: d.denunciado?.nombre || 'Sin Nombre',
-      dni: d.denunciado?.dni || 'Sin DNI',
+      dni: d.denunciado?.dniCuilCuit || 'Sin DNI',
       codpostal: d.denunciado?.codPostal || 'Sin Código Postal',
       domicilio: d.denunciado?.domicilio || 'Sin Domicilio',
       localidad: d.denunciado?.localidad || 'Sin Localidad',
