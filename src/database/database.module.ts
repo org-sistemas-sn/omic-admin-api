@@ -12,7 +12,7 @@ import config from '../config';
       useFactory: (configService: ConfigType<typeof config>) => {
         const { host, name, port, username, password } = configService.database;
         return {
-          type: 'mysql',
+          type: 'postgres',
           host,
           port,
           username,
