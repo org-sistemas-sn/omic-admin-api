@@ -21,7 +21,7 @@ export class EstadosService {
   async findAll() {
     const states = await this.estadoRepo.find({
       where: {
-        show: true,
+        show: 1,
       },
     });
     if (!states) {

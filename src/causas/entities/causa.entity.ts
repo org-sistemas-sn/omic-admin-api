@@ -11,7 +11,7 @@ import {
 
 @Entity({ name: 'causa' })
 export class Causa {
-  @PrimaryGeneratedColumn({ type: 'bigint', name: 'nroCausa' })
+  @PrimaryGeneratedColumn({ type: 'int4', name: 'nroCausa' })
   nroCausa: number;
 
   @PrimaryColumn({ type: 'integer', width: 6, name: 'anioCausa' })

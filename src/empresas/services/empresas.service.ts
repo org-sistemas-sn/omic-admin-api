@@ -101,7 +101,7 @@ export class EmpresasService {
 
   findActives() {
     return this.empresaRepo.find({
-      where: { isActive: true, deletedAt: IsNull() },
+      where: { isActive: 1, deletedAt: IsNull() },
     });
   }
 
@@ -229,7 +229,7 @@ export class EmpresasService {
         fechaAdhesion: this.#formatDate(row.getCell(10).value),
         declaracionJurada: this.#formatText(row.getCell(11).text),
         pvRegistro: this.#formatText(row.getCell(12).text),
-        isActive: true,
+        isActive: 1,
         cargaMasiva: new Date(),
       };
 
