@@ -56,7 +56,7 @@ export class CreateCompanyDto {
   @ApiPropertyOptional()
   @IsBoolean()
   @IsOptional()
-  readonly isActive: boolean;
+  readonly isActive: number;
 }
 
 export class UpdateCompanyDto extends PartialType(CreateCompanyDto) {}

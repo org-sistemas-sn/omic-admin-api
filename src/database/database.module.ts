@@ -25,6 +25,8 @@ import config from '../config';
           ssl: {
             rejectUnauthorized: false,
           },
+          logging: true,
+          logger: 'advanced-console',
         };
       },
     }),

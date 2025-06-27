@@ -60,8 +60,8 @@ export class Empresa {
   @Column({ type: 'text', nullable: true, name: 'pv_registro' })
   pvRegistro: string;
 
-  @Column({ type: 'bool', name: 'is_active', default: true })
-  isActive: boolean;
+  @Column({ type: 'int2', name: 'is_active', default: true })
+  isActive: number;
 
   @Column({ type: 'timestamp', name: 'carga_masiva' })
   cargaMasiva: Date;

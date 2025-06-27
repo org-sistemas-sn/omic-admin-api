@@ -19,8 +19,8 @@ export class DocumentosTipos {
   @Column({ type: 'varchar', length: 255 })
   descripcion: string;
 
-  @Column({ type: 'boolean', default: 1 })
-  show: boolean;
+  @Column({ type: 'int2', default: 1 })
+  show: number;
 
   @OneToMany(() => DenunciaDocumentos, (d) => d.documentoTipo)
   denunciaDocumentos: DenunciaDocumentos[];
