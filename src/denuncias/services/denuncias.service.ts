@@ -809,7 +809,7 @@ export class DenunciasService {
         });
 
         await axios.post(
-          'https://notificaciones-8abd2b855cde.herokuapp.com/api/notifications/notifications-email',
+          'https://vps-3941078-x.dattaweb.com/notificaciones-api/api/notifications/notifications-email',
           form,
           { headers: { 'api-key': 'fJfCznx805geZEjuvAU533raN4HNh4WB' } },
         );
