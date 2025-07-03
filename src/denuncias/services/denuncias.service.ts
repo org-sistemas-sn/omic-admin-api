@@ -2788,8 +2788,10 @@ export class DenunciasService {
               path: remotePath,
             });
 
+            console.log('ID', id);
+            console.log('DENUNCIA ID', denuncia.id);
             await this.denunciaDocumentosService.create({
-              denunciaId: id,
+              denunciaId: denuncia.id,
               documentoTipoId: email.id,
               fileName: filename,
               path: remotePath,

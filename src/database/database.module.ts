@@ -26,7 +26,10 @@ import config from '../config';
             rejectUnauthorized: false,
           },
           logging: true,
-          logger: 'advanced-console',
+          // logger: 'advanced-console',
+          extra: {
+            max: 20,
+          },
         };
       },
     }),

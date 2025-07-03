@@ -49,14 +49,14 @@ export class DenunciaEstados {
   @CreateDateColumn({
     name: 'create_at',
     type: 'timestamp',
-    default: () => 'CURRENT_TIMESTAMP(6)',
+    default: () => 'CURRENT_TIMESTAMP',
   })
   createAt: Date;
 
   @UpdateDateColumn({
     name: 'update_at',
     type: 'timestamp',
-    default: () => 'CURRENT_TIMESTAMP(6)',
+    default: () => 'CURRENT_TIMESTAMP',
   })
   updateAt: Date;
 }
