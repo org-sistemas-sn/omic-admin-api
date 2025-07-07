@@ -3096,6 +3096,7 @@ export class DenunciasService {
 
     denuncia.estado = estado;
     denuncia.ultMovimiento = new Date();
+    delete denuncia.denunciaDocumentos;
 
     const updatedDenuncia = await this.denunciaRepo.save(denuncia);
 
