@@ -380,6 +380,8 @@ export class DenunciasService {
       denunciaId: denuncia.id,
     });
 
+    data.estadoId = estado.id;
+
     const jobId = `subir-documentos-${Date.now()}-${id}`;
 
     await this.denunciaTasksService.createTask({
@@ -590,6 +592,12 @@ export class DenunciasService {
       if (task) {
         await this.denunciaTasksService.markTaskAsFailed(
           task.id,
+          error?.message || 'Error desconocido',
+        );
+        await this.denunciaEstadosService.markAsFailed(
+          id,
+          data.estadoId,
+          data.userId,
           error?.message || 'Error desconocido',
         );
       }
@@ -809,7 +817,7 @@ export class DenunciasService {
         });
 
         await axios.post(
-          'https://notificaciones-8abd2b855cde.herokuapp.com/api/notifications/notifications-email',
+          'https://vps-3941078-x.dattaweb.com/notificaciones-api/api/notifications/notifications-email',
           form,
           { headers: { 'api-key': 'fJfCznx805geZEjuvAU533raN4HNh4WB' } },
         );
@@ -909,6 +917,11 @@ export class DenunciasService {
 
       if (task) {
         await this.denunciaTasksService.markTaskAsExecuted(task.id);
+        await this.denunciaEstadosService.markAsProcessed(
+          id,
+          data.estadoId,
+          userId,
+        );
         console.log(`☑️ Tarea marcada como ejecutada: ${task.jobId}`);
       }
 
@@ -923,6 +936,12 @@ export class DenunciasService {
       if (task) {
         await this.denunciaTasksService.markTaskAsFailed(
           task.id,
+          error?.message || 'Error desconocido',
+        );
+        await this.denunciaEstadosService.markAsFailed(
+          id,
+          data.estadoId,
+          data.userId,
           error?.message || 'Error desconocido',
         );
       }

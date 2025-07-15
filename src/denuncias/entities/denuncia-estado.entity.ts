@@ -31,6 +31,12 @@ export class DenunciaEstados {
   @Column({ type: 'text' })
   motivo: string;
 
+  @Column({ type: 'boolean', default: false })
+  processed_state: boolean;
+
+  @Column({ type: 'varchar', length: 150, nullable: true })
+  processed_status_error: string | null;
+
   @ManyToOne(() => Usuario, (d) => d.denunciaEstados)
   @JoinColumn({ name: 'Id_Usuario' })
   usuario: Usuario;
