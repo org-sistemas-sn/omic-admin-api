@@ -41,6 +41,7 @@ export const generatePDF = async (info: any, tipo: string) => {
       ],
       protocolTimeout: 120000,
       headless: true,
+      timeout: 60000, // 60 segundos
     });
 
     console.log(':white_check_mark: Puppeteer iniciado correctamente.');
