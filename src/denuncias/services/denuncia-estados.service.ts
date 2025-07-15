@@ -24,6 +24,66 @@ export class DenunciaEstadosService {
     return await this.denunciaEstadosRepo.save(newDenounced);
   }
 
+  async markAsProcessed(
+    denunciaId: number,
+    estadoId: number,
+    usuarioId: number,
+  ): Promise<DenunciaEstados> {
+    const updated = await this.denunciaEstadosRepo.update(
+      {
+        denunciaId,
+        estadoId,
+        processed_state: false,
+      },
+      {
+        processed_state: true,
+        processed_status_error: null,
+        usuarioId,
+      },
+    );
+
+    if (updated.affected === 0) {
+      throw new Error(
+        `No se encontró un estado pendiente para la denuncia ${denunciaId} y estado ${estadoId}`,
+      );
+    }
+
+    return this.denunciaEstadosRepo.findOne({
+      where: { denunciaId, estadoId, processed_state: true },
+      order: { createAt: 'DESC' },
+    });
+  }
+
+  async markAsFailed(
+    denunciaId: number,
+    estadoId: number,
+    usuarioId: number,
+    error: string,
+  ): Promise<DenunciaEstados> {
+    const updated = await this.denunciaEstadosRepo.update(
+      {
+        denunciaId,
+        estadoId,
+        processed_state: false,
+      },
+      {
+        usuarioId,
+        processed_status_error: error,
+      },
+    );
+
+    if (updated.affected === 0) {
+      throw new Error(
+        `No se encontró un estado pendiente para la denuncia ${denunciaId} y estado ${estadoId}`,
+      );
+    }
+
+    return this.denunciaEstadosRepo.findOne({
+      where: { denunciaId, estadoId, processed_state: false },
+      order: { createAt: 'DESC' },
+    });
+  }
+
   async lastState({
     denunciaId,
     estadoId,
