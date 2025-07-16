@@ -2455,7 +2455,9 @@ export class DenunciasService {
         await this.denunciaTasksService.markTaskAsExecuted(task.id);
         console.log(`☑️ Tarea marcada como ejecutada: ${task.jobId}`);
       }
-
+      // Eliminar archivo temporal
+      await this.fileService.deleteTmp(filePath);
+      
       return updatedDenuncia;
     } catch (error) {
       console.error(`❌ [ERROR] ${error.message}`);
