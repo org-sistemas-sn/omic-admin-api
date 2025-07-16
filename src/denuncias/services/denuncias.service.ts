@@ -47,7 +47,6 @@ import { ConfigType } from '@nestjs/config';
 import { DenunciaTasksService } from './denuncia-task.service';
 import { FileService } from './file.service';
 
-
 @Injectable()
 export class DenunciasService {
   private _dir = process.env.FTP_FOLDER || '/images/omic-admin-dev/causas';
@@ -423,9 +422,14 @@ export class DenunciasService {
         removeOnComplete: { age: 120 },
       },
     );
-  };
+  }
 
-  async saveDocumento(filename: string, key: string, denunciaId: number, ruta: string) {
+  async saveDocumento(
+    filename: string,
+    key: string,
+    denunciaId: number,
+    ruta: string,
+  ) {
     const tipo = await this.documentosTiposService.findByKey(key);
     await this.denunciaDocumentosService.create({
       denunciaId: denunciaId,
@@ -434,7 +438,7 @@ export class DenunciasService {
       path: `${ruta}/${filename}`,
     });
     console.log(`✅ [DB] Documento registrado en BD: ${filename}`);
-  };
+  }
 
   async subirDocumentos(data: any) {
     const {
@@ -532,7 +536,12 @@ export class DenunciasService {
       const pdfDenunciante = await generatePDF(info, 'denunciante');
       const fileDenunciante = `${id}_CEDULA_DENUNCIANTE.pdf`;
       await this.subirArchivo(pdfDenunciante, fileDenunciante, id, ruta);
-      await this.saveDocumento(fileDenunciante, 'CEDULA_APERTURA_DENUNCIANTE', id, ruta);
+      await this.saveDocumento(
+        fileDenunciante,
+        'CEDULA_APERTURA_DENUNCIANTE',
+        id,
+        ruta,
+      );
 
       // 📩 Generar y subir PDF de cada denunciado
       const listaDenunciados = this.fusionarDenunciadosYPostales(
@@ -785,10 +794,11 @@ export class DenunciasService {
         key = '',
       ) => {
         const form = new FormData();
-        const subject = `EXPEDIENTE: ${nro_expediente}/${denuncia.denunciante.apellido.toUpperCase()}/${new Date().getFullYear()}/${denuncia.denunciante.nombre.toUpperCase() +
+        const subject = `EXPEDIENTE: ${nro_expediente}/${denuncia.denunciante.apellido.toUpperCase()}/${new Date().getFullYear()}/${
+          denuncia.denunciante.nombre.toUpperCase() +
           ' ' +
           denuncia.denunciante.apellido.toUpperCase()
-          } C/ ${denuncia.denunciadoDenuncia[0].denunciado.nombre.toUpperCase()} S/ PRESUNTA INFRACCIÓN A LA LEY 24.240`;
+        } C/ ${denuncia.denunciadoDenuncia[0].denunciado.nombre.toUpperCase()} S/ PRESUNTA INFRACCIÓN A LA LEY 24.240`;
 
         console.log(
           `📧 [EMAIL] Enviando correo a ${email} con asunto: ${subject}`,
@@ -842,7 +852,7 @@ export class DenunciasService {
             email,
             message:
               message === 'La denuncia en su contra fue' ||
-                message === denuncianteFile.message
+              message === denuncianteFile.message
                 ? `${message}: Aprobada`
                 : message,
             fechaHora: formatFechaHora(now),
@@ -902,8 +912,9 @@ export class DenunciasService {
           email.key,
         );
         const pdf = await generatePDF(email, 'notificacion');
-        const filename = `${email.key}_${email.email.split('@')[0]
-          }_APROBADO.pdf`;
+        const filename = `${email.key}_${
+          email.email.split('@')[0]
+        }_APROBADO.pdf`;
         const remotePath = `${ruta}/${filename}`;
 
         await this.ftpService.fileUpload(Readable.from(pdf), remotePath);
@@ -1008,10 +1019,11 @@ export class DenunciasService {
         method: 'denuncia_rechazada',
         data: [
           {
-            subject: `DENUNCIA: ${new Date().getFullYear()}/${denuncia.denunciante.nombre.toUpperCase() +
+            subject: `DENUNCIA: ${new Date().getFullYear()}/${
+              denuncia.denunciante.nombre.toUpperCase() +
               ' ' +
               denuncia.denunciante.apellido.toUpperCase()
-              } C/ ${denuncia.denunciadoDenuncia[0].denunciado.nombre.toUpperCase()} S/ PRESUNTA INFRACCIÓN A LA LEY 24.240`,
+            } C/ ${denuncia.denunciadoDenuncia[0].denunciado.nombre.toUpperCase()} S/ PRESUNTA INFRACCIÓN A LA LEY 24.240`,
             email: denunciante_email,
             bodyEmail: {
               message: `Su denuncia contra ${`${denuncia.denunciadoDenuncia[0].denunciado.nombre}`} fue:`,
@@ -1059,8 +1071,9 @@ export class DenunciasService {
 
     for (const email of emailEnviados) {
       const pdf = await generatePDF(email, 'notificacion');
-      const filename = `${email.key}_${email.email.split('@')[0]
-        }_RECHAZADO.pdf`;
+      const filename = `${email.key}_${
+        email.email.split('@')[0]
+      }_RECHAZADO.pdf`;
       const remoteDir = `${this._dirRechazadas}/${id}`;
       await this.ftpService.createDir(remoteDir);
       const remotePath = `${remoteDir}/${filename}`;
@@ -1653,7 +1666,8 @@ export class DenunciasService {
     for (const denunciadoItem of listaDenunciados) {
       try {
         console.log(
-          `[PDF] Generando PDF para denunciado ID: ${denunciadoItem.id || 'sin id'
+          `[PDF] Generando PDF para denunciado ID: ${
+            denunciadoItem.id || 'sin id'
           }`,
         );
 
@@ -1663,12 +1677,12 @@ export class DenunciasService {
             denunciado: denunciadoItem.nombre,
             email_denunciado:
               denunciadoItem.tipoEnvioArray === 'email' ||
-                denunciadoItem.tipoEnvioArray === 'ambos'
+              denunciadoItem.tipoEnvioArray === 'ambos'
                 ? denunciadoItem.email
                 : 'No disponible',
             direccion_denunciado:
               denunciadoItem.tipoEnvioArray === 'postal' ||
-                denunciadoItem.tipoEnvioArray === 'ambos'
+              denunciadoItem.tipoEnvioArray === 'ambos'
                 ? `${denunciadoItem.codPostal} ${denunciadoItem.localidad}`
                 : 'No disponible',
             envio_tipo,
@@ -1718,7 +1732,8 @@ export class DenunciasService {
         denunciado.tipoEnvioArray === 'ambos';
 
       console.log(
-        `[EMAIL] Procesando denunciado ${denunciado.email || denunciado.codPostal
+        `[EMAIL] Procesando denunciado ${
+          denunciado.email || denunciado.codPostal
         } | Enviar mail: ${enviarMails}`,
       );
 
@@ -1949,7 +1964,9 @@ export class DenunciasService {
 
     const updatedDenuncia = await this.denunciaRepo.save(denuncia);
 
-    console.log(`📦 [PROCESAR] Encolando tarea para cambio de estado de denuncia #${id}`);
+    console.log(
+      `📦 [PROCESAR] Encolando tarea para cambio de estado de denuncia #${id}`,
+    );
 
     const filePath = await this.fileService.saveToTmp(file);
     const jobId = `notificar-cambio-estado-${Date.now()}-${id}`;
@@ -1994,10 +2011,10 @@ export class DenunciasService {
         'denunciante',
         'denunciadoDenuncia',
         'denunciadoDenuncia.denunciado',
-      ]
+      ];
       const denuncia = await this.denunciaRepo.findOne({
         where: { id },
-        relations
+        relations,
       });
 
       if (!denuncia) {
@@ -2039,7 +2056,9 @@ export class DenunciasService {
           const ruta = `${this._dir}/${id}`;
           await this.ftpService.createDir(ruta);
 
-          const fileName = `${id}_CAMBIO_ESTADO_${estado.key}_${Date.now()}.pdf`;
+          const fileName = `${id}_CAMBIO_ESTADO_${
+            estado.key
+          }_${Date.now()}.pdf`;
           const remotePath = `${ruta}/${fileName}`;
 
           const streamFile = Readable.from(buffer);
@@ -2054,10 +2073,11 @@ export class DenunciasService {
             emailsToSend.push({
               subject: `EXPEDIENTE: ${nroExpediente}/${denunciante.apellido
                 .charAt(0)
-                .toUpperCase()}/${new Date().getFullYear()}/${denunciante.nombre.toUpperCase() +
+                .toUpperCase()}/${new Date().getFullYear()}/${
+                denunciante.nombre.toUpperCase() +
                 ' ' +
                 denunciante.apellido.toUpperCase()
-                } C/ ${denuncia.denunciadoDenuncia[0].denunciado.nombre.toUpperCase()} S/ PRESUNTA INFRACCIÓN A LA LEY 24.240`,
+              } C/ ${denuncia.denunciadoDenuncia[0].denunciado.nombre.toUpperCase()} S/ PRESUNTA INFRACCIÓN A LA LEY 24.240`,
               email: denunciante.email,
               bodyEmail: {
                 message: message,
@@ -2096,10 +2116,11 @@ export class DenunciasService {
               emailsToSend.push({
                 subject: `EXPEDIENTE: ${nroExpediente}/${denunciante.apellido
                   .charAt(0)
-                  .toUpperCase()}/${new Date().getFullYear()}/${denunciante.nombre.toUpperCase() +
+                  .toUpperCase()}/${new Date().getFullYear()}/${
+                  denunciante.nombre.toUpperCase() +
                   ' ' +
                   denunciante.apellido.toUpperCase()
-                  } C/ ${denuncia.denunciadoDenuncia[0].denunciado.nombre.toUpperCase()} S/ PRESUNTA INFRACCIÓN A LA LEY 24.240`,
+                } C/ ${denuncia.denunciadoDenuncia[0].denunciado.nombre.toUpperCase()} S/ PRESUNTA INFRACCIÓN A LA LEY 24.240`,
                 email: denunciado.email,
                 bodyEmail: {
                   message: message,
@@ -2153,8 +2174,9 @@ export class DenunciasService {
             for (const email of emailsEnviados) {
               email.fechaHora = this.formatFechaHora(new Date());
               const pdf = await generatePDF(email, 'notificacion');
-              const filename = `${email.key}_${email.email.split('@')[0]}_${estado.key
-                }.pdf`;
+              const filename = `${email.key}_${email.email.split('@')[0]}_${
+                estado.key
+              }.pdf`;
               const remotePath = `${this._dir}/${id}/${filename}`;
               await this.ftpService.fileUpload(Readable.from(pdf), remotePath);
 
@@ -2292,10 +2314,11 @@ export class DenunciasService {
             emailsToSend.push({
               subject: `EXPEDIENTE: ${nroExpediente}/${denunciante.apellido
                 .charAt(0)
-                .toUpperCase()}/${new Date().getFullYear()}/${denunciante.nombre.toUpperCase() +
+                .toUpperCase()}/${new Date().getFullYear()}/${
+                denunciante.nombre.toUpperCase() +
                 ' ' +
                 denunciante.apellido.toUpperCase()
-                } C/ ${denuncia.denunciadoDenuncia[0].denunciado.nombre.toUpperCase()} S/ PRESUNTA INFRACCIÓN A LA LEY 24.240`,
+              } C/ ${denuncia.denunciadoDenuncia[0].denunciado.nombre.toUpperCase()} S/ PRESUNTA INFRACCIÓN A LA LEY 24.240`,
               email: denunciante.email,
               bodyEmail: {
                 message: message,
@@ -2333,10 +2356,11 @@ export class DenunciasService {
               emailsToSend.push({
                 subject: `EXPEDIENTE: ${nroExpediente}/${denunciante.apellido
                   .charAt(0)
-                  .toUpperCase()}/${new Date().getFullYear()}/${denunciante.nombre.toUpperCase() +
+                  .toUpperCase()}/${new Date().getFullYear()}/${
+                  denunciante.nombre.toUpperCase() +
                   ' ' +
                   denunciante.apellido.toUpperCase()
-                  } C/ ${denuncia.denunciadoDenuncia[0].denunciado.nombre.toUpperCase()} S/ PRESUNTA INFRACCIÓN A LA LEY 24.240`,
+                } C/ ${denuncia.denunciadoDenuncia[0].denunciado.nombre.toUpperCase()} S/ PRESUNTA INFRACCIÓN A LA LEY 24.240`,
                 email: denunciado.email,
                 bodyEmail: {
                   message: message,
@@ -2390,8 +2414,9 @@ export class DenunciasService {
             for (const email of emailsEnviados) {
               email.fechaHora = this.formatFechaHora(new Date());
               const pdf = await generatePDF(email, 'notificacion');
-              const filename = `${email.key}_${email.email.split('@')[0]}_${estado.key
-                }.pdf`;
+              const filename = `${email.key}_${email.email.split('@')[0]}_${
+                estado.key
+              }.pdf`;
               const remotePath = `${this._dir}/${id}/${filename}`;
               await this.ftpService.fileUpload(Readable.from(pdf), remotePath);
 
@@ -2472,11 +2497,12 @@ export class DenunciasService {
 
       if (task) {
         await this.denunciaTasksService.markTaskAsExecuted(task.id);
+        await this.denunciaEstadosService.markAsProcessed(id, estadoId, userId);
         console.log(`☑️ Tarea marcada como ejecutada: ${task.jobId}`);
       }
       // Eliminar archivo temporal
       await this.fileService.deleteTmp(filePath);
-      
+
       return updatedDenuncia;
     } catch (error) {
       console.error(`❌ [ERROR] ${error.message}`);
@@ -2486,6 +2512,12 @@ export class DenunciasService {
       if (task) {
         await this.denunciaTasksService.markTaskAsFailed(
           task.id,
+          error?.message || 'Error desconocido',
+        );
+        await this.denunciaEstadosService.markAsFailed(
+          id,
+          estadoId,
+          userId,
           error?.message || 'Error desconocido',
         );
       }
