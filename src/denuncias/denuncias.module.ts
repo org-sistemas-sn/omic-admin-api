@@ -33,6 +33,7 @@ import { CausasService } from 'src/causas/services/causa.service';
 import { QueueModule } from 'src/queue/queue.module';
 import { DenunciaTasks } from './entities/denuncia-task.entity';
 import { DenunciaTasksService } from './services/denuncia-task.service';
+import { FileService } from './services/file.service';
 
 @Module({
   imports: [
@@ -71,6 +72,7 @@ import { DenunciaTasksService } from './services/denuncia-task.service';
     DatosNotificacionService,
     DireccionesEnviadasService,
     DenunciaTasksService,
+    FileService
   ],
   controllers: [DenunciasController],
   exports: [DenunciasService],

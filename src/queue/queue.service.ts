@@ -73,7 +73,7 @@ export class QueueService implements OnModuleDestroy {
 
   // ✅ DENUNCIA QUEUE
   async addDenunciaTask(
-    tipo: 'aprobar-denuncia' | 'subir-documentos' | 'notificar-por-correo',
+    tipo: 'aprobar-denuncia' | 'subir-documentos' | 'notificar-por-correo' | 'notificar-cambio-estado',
     data: any,
     opts?: JobsOptions,
   ): Promise<Job> {
