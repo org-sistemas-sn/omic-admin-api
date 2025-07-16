@@ -35,11 +35,15 @@ export class DenunciaProcessor extends WorkerHost {
           await this.denunciasService.notificarPorCorreo(job.data);
           break;
 
+        case 'notificar-cambio-estado':
+          await this.denunciasService.notificarCambioEstado(job.data);
+          break;
+
         default:
           this.logger.warn(`⚠️ Tipo de job desconocido: ${tipo}`);
       }
     } catch (err) {
-      this.logger.error(`❌ Error en job '${job.name}': ${err.message}`);
+      this.logger.error(`❌ Error en job '${job.id}': ${err.message}`);
       throw err;
     }
   }
