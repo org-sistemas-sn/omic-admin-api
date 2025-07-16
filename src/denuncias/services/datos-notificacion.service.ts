@@ -13,6 +13,43 @@ export class DatosNotificacionService {
     private datosNotificacionRepo: Repository<DatosNotificacion>,
   ) {}
 
+  async update(
+    id: number,
+    {
+      denunciaEstado,
+      envio_tipo,
+      meet_link,
+      documentPath,
+      id_usuario,
+      comprobantes_notificacion,
+    }: {
+      denunciaEstado?: DenunciaEstados;
+      envio_tipo?: string;
+      meet_link?: string;
+      documentPath?: string;
+      id_usuario?: number;
+      comprobantes_notificacion?: any[];
+    },
+  ) {
+    const datosNotificacion = await this.datosNotificacionRepo.findOne({
+      where: { id },
+    });
+
+    if (!datosNotificacion) {
+      throw new Error('Datos de notificación no encontrados.');
+    }
+
+    datosNotificacion.denunciaEstado = denunciaEstado ? denunciaEstado : datosNotificacion.denunciaEstado;
+    datosNotificacion.envio_tipo = envio_tipo ? envio_tipo : datosNotificacion.envio_tipo;
+    datosNotificacion.meet_link = meet_link ? meet_link : datosNotificacion.meet_link;
+    datosNotificacion.documentPath = documentPath ? documentPath : datosNotificacion.documentPath;
+    datosNotificacion.id_usuario = id_usuario ? id_usuario : datosNotificacion.id_usuario;
+    datosNotificacion.comprobantes_notificacion =
+      comprobantes_notificacion ? comprobantes_notificacion : datosNotificacion.comprobantes_notificacion;
+
+    return await this.datosNotificacionRepo.save(datosNotificacion);
+  }
+
   async create({
     denuncia,
     denunciaEstado,

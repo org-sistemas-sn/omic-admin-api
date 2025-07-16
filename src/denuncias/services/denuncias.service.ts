@@ -1924,7 +1924,7 @@ export class DenunciasService {
       throw new Error('Formato de payload inválido.');
     }
 
-    const { id, estadoId, userId } = parsedPayload;
+    const { id, estadoId, userId, tipoEnvio } = parsedPayload;
 
     const denuncia = await this.denunciaRepo.findOne({
       where: { id },
@@ -1945,6 +1945,14 @@ export class DenunciasService {
       denunciaId: id,
       estadoId,
       usuarioId: userId,
+    });
+
+    const datosNotificacion = await this.datosNotificacionService.create({
+      denuncia,
+      denunciaEstado: nuevoEstado,
+      envio_tipo: tipoEnvio,
+      meet_link: null,
+      id_usuario: userId,
     });
 
     await this.movimientoService.create({
@@ -1980,7 +1988,7 @@ export class DenunciasService {
 
     await this.queueService.addDenunciaTask(
       'notificar-cambio-estado',
-      { ...parsedPayload, filePath, jobId },
+      { ...parsedPayload, filePath, datosNotificacionId: datosNotificacion.id,jobId },
       {
         jobId,
         priority: 1,
@@ -2002,6 +2010,7 @@ export class DenunciasService {
       denunciados,
       postales,
       filePath,
+      datosNotificacionId,
       jobId,
     } = data;
 
@@ -2022,22 +2031,6 @@ export class DenunciasService {
         throw new NotFoundException();
       }
       const estado = await this.estadosService.findOne(estadoId);
-
-      const nuevoEstado = await this.denunciaEstadosService.create({
-        denunciaId: id,
-        estadoId,
-        usuarioId: userId,
-      });
-
-      await this.movimientoService.create({
-        denuncia,
-        tabla_afectada: 'Denuncia_Estados',
-        entidad_id: nuevoEstado.denunciaEstadosId,
-        tipo_cambio: 'CREATE',
-        descripcion: `Cambio de estado a ${estado.descripcion}.`,
-        valor_nuevo: estado.descripcion,
-        usuarioId: userId,
-      });
 
       const emailsEnviados = [];
       const comprobantesNotificacion = [];
@@ -2201,10 +2194,7 @@ export class DenunciasService {
             );
           }
 
-          const datosNotificacion = await this.datosNotificacionService.create({
-            ...data,
-            denuncia,
-            denunciaEstado: nuevoEstado,
+          await this.datosNotificacionService.update(datosNotificacionId, {
             id_usuario: userId,
             envio_tipo: tipoEnvio,
             documentPath: remotePath,
@@ -2212,7 +2202,7 @@ export class DenunciasService {
           });
 
           await this.direccionesEnviadasService.create({
-            datosNotificacionId: datosNotificacion.id,
+            datosNotificacionId,
             denuncianteId: denuncia.denunciante.id,
             email: denunciante.email,
           });
@@ -2220,7 +2210,7 @@ export class DenunciasService {
           await Promise.all(
             denunciados.map(async (denunciado) => {
               return this.direccionesEnviadasService.create({
-                datosNotificacionId: datosNotificacion.id,
+                datosNotificacionId,
                 denunciadoId: denunciado.id,
                 email: denunciado.email,
               });
@@ -2245,10 +2235,7 @@ export class DenunciasService {
           await this.ftpService.fileUpload(streamFile, remotePath);
           this.ftpService.close();
 
-          const datosNotificacion = await this.datosNotificacionService.create({
-            ...data,
-            denuncia,
-            denunciaEstado: nuevoEstado,
+          await this.datosNotificacionService.update(datosNotificacionId, {
             id_usuario: userId,
             envio_tipo: tipoEnvio,
             documentPath: remotePath,
@@ -2259,7 +2246,7 @@ export class DenunciasService {
           );
 
           await this.direccionesEnviadasService.create({
-            datosNotificacionId: datosNotificacion.id,
+            datosNotificacionId,
             denuncianteId: denuncia.denunciante.id,
             codPostal: denunciante.codPostal,
           });
@@ -2267,7 +2254,7 @@ export class DenunciasService {
           await Promise.all(
             postales.map(async (denunciado) => {
               return this.direccionesEnviadasService.create({
-                datosNotificacionId: datosNotificacion.id,
+                datosNotificacionId,
                 denunciadoId: denunciado.id,
                 codPostal: denunciado.codPostal,
               });
@@ -2441,10 +2428,7 @@ export class DenunciasService {
             );
           }
 
-          const datosNotificacion = await this.datosNotificacionService.create({
-            ...data,
-            denuncia,
-            denunciaEstado: nuevoEstado,
+          await this.datosNotificacionService.update(datosNotificacionId,{
             id_usuario: userId,
             envio_tipo: tipoEnvio,
             documentPath: remotePath,
@@ -2452,7 +2436,7 @@ export class DenunciasService {
           });
 
           await this.direccionesEnviadasService.create({
-            datosNotificacionId: datosNotificacion.id,
+            datosNotificacionId,
             denuncianteId: denuncia.denunciante.id,
             email: denunciante.email,
             codPostal: denunciante.codPostal,
@@ -2461,14 +2445,14 @@ export class DenunciasService {
           await Promise.all([
             ...postales.map((denunciado) =>
               this.direccionesEnviadasService.create({
-                datosNotificacionId: datosNotificacion.id,
+                datosNotificacionId,
                 denunciadoId: denunciado.id,
                 codPostal: denunciado.codPostal,
               }),
             ),
             ...denunciados.map((denunciado) =>
               this.direccionesEnviadasService.create({
-                datosNotificacionId: datosNotificacion.id,
+                datosNotificacionId,
                 denunciadoId: denunciado.id,
                 email: denunciado.email,
               }),
@@ -2483,10 +2467,7 @@ export class DenunciasService {
           });
         }
       } else {
-        await this.datosNotificacionService.create({
-          ...data,
-          denuncia,
-          denunciaEstado: nuevoEstado,
+        await this.datosNotificacionService.update(datosNotificacionId,{
           id_usuario: userId,
         });
       }
