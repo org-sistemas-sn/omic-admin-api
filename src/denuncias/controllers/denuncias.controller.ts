@@ -145,7 +145,7 @@ export class DenunciasController {
     @Body()
     payload: any,
   ) {
-    return this.denunciaService.changeState(payload, file);
+    return this.denunciaService.procesarCambioEstado(payload, file);
   }
 
   @Put(':id')
